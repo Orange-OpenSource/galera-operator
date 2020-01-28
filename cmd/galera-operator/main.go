@@ -1,0 +1,238 @@
+// Copyright 2020 Orange SA
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"galera-operator/pkg/chaos"
+	clientset "galera-operator/pkg/client/clientset/versioned"
+	informers "galera-operator/pkg/client/informers/externalversions"
+	"galera-operator/pkg/controllers/backup"
+	"galera-operator/pkg/controllers/cluster"
+	"galera-operator/pkg/utils/constants"
+	"galera-operator/pkg/utils/probe"
+	"galera-operator/pkg/utils/signals"
+	"galera-operator/pkg/version"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"net/http"
+	"os"
+	"runtime"
+	"sync"
+	"time"
+)
+
+var (
+	namespace      string
+	name           string
+	listenAddr     string
+	clusterWide    bool
+	bootstrapImage string
+	backupImage    string
+	upgradeConfig  string
+	chaosLevel     int
+	resyncPeriod   int
+	runThread      int
+	backupThread   int
+	printVersion   bool
+)
+
+func init() {
+	flag.StringVar(&listenAddr, "listen-address", constants.ListenAddress, "The galera-operator address on which the metrics and readiness probe HTTP server will listen to")
+	// chaos level will be removed once we have a formal tool to inject failures.
+	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the galera clusters created by the operator")
+	flag.BoolVar(&clusterWide, "cluster-wide", false, "Enable operator to watch clusters in all namespaces")
+	flag.IntVar(&resyncPeriod, "resync", constants.ResyncPeriod, "Resync period time between calls to controllers")
+	flag.IntVar(&runThread,"run-thread", constants.RunThread, "Specify the number of thread for the run controller" )
+	flag.IntVar(&backupThread,"backup-thread", constants.BackupThread, "Specify the number of thread for the backup controllers" )
+	flag.StringVar(&bootstrapImage, "bootstrap", constants.BootstrapImage, "Container image used to bootstrap galera clusters (it is not the galera image)")
+	flag.StringVar(&backupImage, "backup", constants.BackupImage, "Container image used to backup/restore galera clusters (it is not the galera image)")
+	flag.StringVar(&upgradeConfig, "config-map", constants.UpgradeConfig, "Upgrade Config plan, empty string for no control")
+	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
+}
+
+func startChaos(ctx context.Context, kubecli kubernetes.Interface, ns string, chaosLevel int) {
+	m := chaos.NewMonkeys(kubecli)
+	ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
+
+	switch chaosLevel {
+	case 1:
+		logrus.Info("chaos level = 1: randomly kill one galera pod every 30 seconds at 50%")
+		c := &chaos.CrashConfig{
+			Namespace: ns,
+			Selector:  ls,
+
+			KillRate:        rate.Every(30 * time.Second),
+			KillProbability: 0.5,
+			KillMax:         1,
+		}
+		go func() {
+			time.Sleep(60 * time.Second) // don't start until quorum up
+			m.CrushPods(ctx, c)
+		}()
+
+	case 2:
+		logrus.Info("chaos level = 2: randomly kill at most five galera pods every 30 seconds at 50%")
+		c := &chaos.CrashConfig{
+			Namespace: ns,
+			Selector:  ls,
+
+			KillRate:        rate.Every(30 * time.Second),
+			KillProbability: 0.5,
+			KillMax:         5,
+		}
+
+		go m.CrushPods(ctx, c)
+
+	default:
+	}
+}
+
+func main() {
+	// Parse flags the command-line flags from os.Args[1:]
+	flag.Parse()
+
+	if printVersion {
+		fmt.Println("galera-operator Version:", version.Version)
+		fmt.Println("Git SHA:", version.GitSHA)
+		fmt.Println("Build Date:", version.Date)
+		fmt.Println("Go Version:", runtime.Version())
+		fmt.Printf("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		os.Exit(0)
+	}
+
+	logrus.Infof("galera-operator Version: %v", version.Version)
+	logrus.Infof("Git SHA: %s", version.GitSHA)
+	logrus.Infof("Build Date:", version.Date)
+	logrus.Infof("Go Version: %s", runtime.Version())
+	logrus.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
+
+	namespace = os.Getenv(constants.EnvOperatorPodNamespace)
+	if len(namespace) == 0 {
+		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodNamespace)
+	}
+
+	name = os.Getenv(constants.EnvOperatorPodName)
+	if len(name) == 0 {
+		logrus.Fatalf("must set env (%s)", constants.EnvOperatorPodName)
+	}
+
+	http.HandleFunc(probe.HTTPProbeEndpoint, probe.ReadyHandler)
+	http.Handle("/metrics", promhttp.Handler())
+	go http.ListenAndServe(listenAddr, nil)
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+
+	// Set up signals so we handle the first shutdown signal gracefully.
+	signals.SetupSignalHandlerWithContext(cancelFunc)
+
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		logrus.Fatalf("Error building kubeconfig: %s", err.Error())
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		logrus.Fatalf("Error building clientset: %s", err.Error())
+	}
+
+	galeraClient, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		logrus.Fatalf("Error building galera clientset: %s", err.Error())
+	}
+
+	startChaos(context.Background(), kubeClient, namespace, chaosLevel)
+
+	// ClusterWide or namespaced operator
+	var operatedNamespace string
+	if clusterWide == true {
+		operatedNamespace = metav1.NamespaceAll
+	} else {
+		operatedNamespace = namespace
+	}
+
+	// use informers that filter on the namespace where the operator is deployed
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClient, time.Duration(resyncPeriod)*time.Second, kubeinformers.WithNamespace(operatedNamespace))
+ 	galeraOperatorInformerFactory := informers.NewSharedInformerFactoryWithOptions(galeraClient, time.Duration(resyncPeriod)*time.Second, informers.WithNamespace(operatedNamespace))
+
+ 	probe.SetReady()
+
+	// Goroutines can add themselves to this to be waited on
+	var wg sync.WaitGroup
+
+	// Galera Controller
+	galeraCtl := cluster.NewGaleraController(
+        kubeClient,
+        cfg,
+        galeraClient,
+		galeraOperatorInformerFactory.Sql().V1beta2().Galeras(),
+		kubeInformerFactory.Core().V1().Pods(),
+		kubeInformerFactory.Core().V1().Services(),
+		kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
+		kubeInformerFactory.Apps().V1().ControllerRevisions(),
+		kubeInformerFactory.Policy().V1beta1().PodDisruptionBudgets(),
+		kubeInformerFactory.Core().V1().Secrets(),
+		galeraOperatorInformerFactory.Sql().V1beta2().UpgradeConfigs(),
+		bootstrapImage,
+		backupImage,
+		upgradeConfig,
+		clusterWide,
+		namespace,
+		resyncPeriod,
+	)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		galeraCtl.Run(runThread, ctx.Done())
+	}()
+
+	// Galera Backup controller
+	galeraBkpCtl := backup.NewGaleraBackupController(
+		kubeClient,
+		cfg,
+		galeraClient,
+		galeraOperatorInformerFactory.Sql().V1beta2().GaleraBackups(),
+		galeraOperatorInformerFactory.Sql().V1beta2().Galeras(),
+		kubeInformerFactory.Core().V1().Pods(),
+		kubeInformerFactory.Core().V1().Secrets(),
+		clusterWide,
+		namespace,
+		resyncPeriod,
+	)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		galeraBkpCtl.Run(backupThread, ctx.Done())
+	}()
+
+	// Shared informers have to be started after ALL controllers.
+	go kubeInformerFactory.Start(ctx.Done())
+	go galeraOperatorInformerFactory.Start(ctx.Done())
+
+	<-ctx.Done()
+
+	logrus.Info("Waiting for all controllers to shut down gracefully")
+	wg.Wait()
+}

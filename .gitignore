@@ -1,0 +1,15 @@
+# Compiled Object files,
+*.o
+*.a
+*.so
+
+# Folders
+bin/
+/main
+.idea/
+
+# Mac
+.DS_Store
+
+# vendor
+vendor/

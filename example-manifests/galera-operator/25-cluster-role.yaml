@@ -1,0 +1,55 @@
+apiVersion: rbac.authorization.k8s.io/v1beta2
+kind: ClusterRole
+metadata:
+  name: galera-operator
+  namespace: galera
+rules:
+  - apiGroups:
+      - sql.databases
+    resources:
+      - galeras
+      - galerabackups
+      - upgradeconfigs
+      - upgraderules
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - sql.databases
+    resources:
+      - galeras/status
+      - galerabackups/status
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/exec
+      - services
+      - secrets
+      - endpoints
+      - persistentvolumeclaims
+      - events
+      - configmaps
+    verbs:
+      - "*"
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+  - apiGroups:
+      - apps
+    resources:
+      - controllerrevisions
+    verbs:
+      - "*"

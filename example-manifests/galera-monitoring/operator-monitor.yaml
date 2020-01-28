@@ -1,0 +1,32 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: galera-operator
+  namespace: galera
+  labels:
+    team: galera
+spec:
+  selector:
+    matchLabels:
+      app: galera-operator
+  namespaceSelector:
+    matchNames:
+      - galera
+  endpoints:
+    - port: metrics
+      interval: 10s
+      scheme: http
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: galera-operator-service
+  namespace: galera
+  labels:
+    app: galera-operator
+spec:
+  selector:
+    app: galera-operator
+  ports:
+    - name: metrics
+      port: 8080

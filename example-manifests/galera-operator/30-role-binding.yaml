@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1beta2
+kind: RoleBinding
+metadata:
+  name: galera-operator
+  namespace: galera
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: galera-operator
+subjects:
+  - kind: ServiceAccount
+    name: galera-operator
+    namespace: galera

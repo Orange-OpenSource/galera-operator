@@ -1,0 +1,32 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: galera-cluster
+  namespace: galera
+  labels:
+    team: galera
+spec:
+  selector:
+    matchLabels:
+      galera-cluster: galera
+  namespaceSelector:
+    matchNames:
+      - galera
+  endpoints:
+    - port: metrics
+      interval: 10s
+      scheme: http
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: galera-metric-service
+  namespace: galera
+  labels:
+    galera-cluster: galera
+spec:
+  selector:
+    galera-cluster: galera
+  ports:
+    - name: metrics
+      port: 9104

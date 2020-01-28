@@ -1,0 +1,57 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: upgradeconfigs.sql.databases
+spec:
+  # group name to use for REST API: /apis/<group>/<version>
+  group: sql.databases
+  # list of versions supported by this CustomResourceDefinition
+  versions:
+    - name: v1beta2
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true
+  # either Namespaced or Cluster
+  scope: Namespaced
+  names:
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: upgradeconfigs
+    # singular name to be used as an alias on the CLI and for display
+    singular: upgradeconfig
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: UpgradeConfig
+    # listKind is normally the CamelCased singular type followed by suffix List
+    listKind: UpgradeConfigList
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+      - gc
+    # categories is a list of grouped resources the custom resource belongs to.
+    categories:
+      - all
+  additionalPrinterColumns:
+    - name: Age
+      type: date
+      JSONPath: .metadata.creationTimestamp
+      priority: 0
+  validation:
+    openAPIV3Schema:
+      # https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md
+      required:
+      - spec
+      type: object
+      properties:
+        spec:
+          type: object
+          required:
+          - upgradeRules
+          properties:
+            upgradesRules:
+              type: object
+              required:
+              - targetVersion
+              properties:
+                targetVersion:
+                  type: string
+

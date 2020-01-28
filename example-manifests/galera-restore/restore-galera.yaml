@@ -1,0 +1,82 @@
+apiVersion: sql.databases/v1beta2
+kind: Galera
+metadata:
+  name: gal-restore
+  namespace: galera
+  ## Adding this annotation make this cluster managed by clusterwide operators
+  ## namespaced operators ignore it
+  #annotations:
+  #  sql.databases/scope: clusterwide
+spec:
+  replicas: 3
+  restore:
+    name: gal-galera-backup.20191007093230.sql.gz
+    storageProviderType: S3
+    s3:
+      #region:
+      endpoint: http://minio.apps-rocks.fr
+      bucket: save
+      #forcePathStyle:
+      credentialsSecret:
+        name: s3-secret
+  pod:
+    labels:
+      galera-cluster: gal-restore
+    credentialsSecret:
+      name: galera-secret
+#    image: sebs42/mariadb:10.3.12-bionic
+    image: sebs42/mariadb:10.4.2-bionic
+#    mycnfConfigMap: {galeraconf}
+    mycnfConfigMap:
+      name: galeraconf
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 1000m
+        memory: 4Gi
+    env:
+      - name: MYSQL_ROOT_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: galera-secret
+            key: password
+#        value: "test"
+      - name: EXPORTER_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: galera-secret
+            key: exporter-password
+#        value: "etest"
+    metric:
+      image: prom/mysqld-exporter:v0.11.0
+      env:
+        - name: DATA_SOURCE_NAME
+#          value: exporter:${EXPORTER_PASSWORD}@(localhost:3306)
+          value: "root:test@(localhost:3306)/"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 1Gi
+        limits:
+          cpu: 200m
+          memory: 2Gi
+      port: 9104
+    priorityClassName: high-priority
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: galera-cluster
+                  operator: In
+                  values:
+                    - gal-restore
+            topologyKey: kubernetes.io/hostname
+  persistentVolumeClaimSpec:
+    accessModes: [ "ReadWriteOnce" ]
+    storageClassName: local-ssd
+    resources:
+      requests:
+        storage: 90Gi

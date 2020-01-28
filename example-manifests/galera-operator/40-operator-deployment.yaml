@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: galera-operator
+  namespace: galera
+  labels:
+    app: galera-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: galera-operator
+  template:
+    metadata:
+      labels:
+        app: galera-operator
+    spec:
+      serviceAccountName: galera-operator
+      containers:
+      - name: galera-operator
+        image: sebs42/galera-operator:0.4
+        imagePullPolicy: Always
+        command:
+        - galera-operator
+        # Uncomment to act for resources in all namespaces. More information in doc/clusterwide.md
+        #- -cluster-wide
+        - resync=30
+        - run-thread=2
+        - backup-thread=2
+        #- -version
+        env:
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        ports:
+          - name: http
+            containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /probe
+            port: 8080
+          livenessProbe:
+            httpGet:
+              path: /probe
+              port: 8080

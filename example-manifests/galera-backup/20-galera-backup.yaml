@@ -1,0 +1,20 @@
+apiVersion: sql.databases/v1beta2
+kind: GaleraBackup
+metadata:
+  name: galera-backup
+  namespace: galera
+spec:
+  galeraName: galera
+  galeraNamespace: galera
+  backupMethodType: mariabackup
+  mariabackup:
+    credentialsBackup:
+      name: galera-secret
+  storageProviderType: S3
+  s3:
+    #    region:
+    endpoint: http://minio.apps-rocks.fr
+    bucket: save
+#    forcePathStyle:
+    credentialsSecret:
+      name: s3-secret

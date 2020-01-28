@@ -1,0 +1,261 @@
+================================================================================
+Apache 2.0
+================================================================================
+Component: aws-sdk-go
+License Text URL: https://github.com/aws/aws-sdk-go/blob/master/LICENSE.txt
+Source Code: https://github.com/aws/aws-sdk-go
+
+Component: distribution
+License Text URL: https://github.com/docker/distribution/blob/master/LICENSE
+Source Code: https://github.com/docker/distribution
+
+Component: spdystream
+License Text URL: https://github.com/docker/spdystream/blob/master/LICENSE
+Source Code: https://github.com/docker/spdystream
+
+Component: jsonpointer
+License Text URL: https://github.com/go-openapi/jsonpointer/blob/master/LICENSE
+Source Code: https://github.com/go-openapi/jsonpointer
+
+Component: jsonreference
+License Text URL: https://github.com/go-openapi/jsonreference/blob/master/LICENSE
+Source Code: https://github.com/go-openapi/jsonreference
+
+Component: spec
+License Text URL: https://github.com/go-openapi/spec/blob/master/LICENSE
+Source Code: https://github.com/go-openapi/spec
+
+Component: swag
+License Text URL: https://github.com/go-openapi/swag/blob/master/LICENSE
+Source Code: https://github.com/go-openapi/swag
+
+Component: glog
+License Text URL: https://github.com/golang/glog/blob/master/LICENSE
+Source Code: https://github.com/golang/glog
+
+Component: groupcache
+License Text URL: https://github.com/golang/groupcache/blob/master/LICENSE
+Source Code: github.com/golang/groupcache
+
+Component: btree
+License Text URL: https://github.com/google/btree/blob/master/LICENSE
+Source Code: https://github.com/google/btree
+
+Component: gofuzz
+License Text URL: https://github.com/google/gofuzz/blob/master/LICENSE
+Source Code: https://github.com/google/gofuzz
+
+Component: gnostic
+License Text URL: https://github.com/googleapis/gnostic/blob/master/LICENSE
+Source Code: https://github.com/googleapis/gnostic
+
+Component: golang_protobuf_extensions
+License Text URL: https://github.com/matttproud/golang_protobuf_extensions/blob/master/LICENSE
+Source Code: https://github.com/matttproud/golang_protobuf_extensions
+
+Component: concurrent
+License Text URL: https://github.com/modern-go/concurrent/blob/master/LICENSE
+Source Code: https://github.com/modern-go/concurrent
+
+Component: reflect2
+License Text URL: https://github.com/modern-go/reflect2/blob/master/LICENSE
+Source Code: https://github.com/modern-go/reflect2
+
+Component: go-digest
+License Text URL: https://github.com/opencontainers/go-digest/blob/master/LICENSE
+Source Code: https://github.com/opencontainers/go-digest
+
+Component: client_golang
+License Text URL: https://github.com/prometheus/client_golang/blob/master/LICENSE
+Source Code: https://github.com/prometheus/client_golang
+
+Component: client_model
+License Text URL: https://github.com/prometheus/client_model/blob/master/LICENSE
+Source Code: https://github.com/prometheus/client_model
+
+Component: common
+License Text URL: https://github.com/prometheus/common/blob/master/LICENSE
+Source Code: https://github.com/prometheus/common
+
+Component: appengine
+License Text URL: https://github.com/golang/appengine/blob/master/LICENSE
+Source Code: https://github.com/golang/appengine
+
+Component: yaml
+License Text URL: https://github.com/go-yaml/yaml/blob/v2/LICENSE
+Source Code: https://github.com/go-yaml/yaml
+
+Component: api
+License Text URL: https://github.com/kubernetes/api/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/api
+
+Component: apiextensions-apiserver
+License Text URL: https://github.com/kubernetes/apiextensions-apiserver/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/apiextensions-apiserver
+
+Component: apimachinery
+License Text URL: https://github.com/kubernetes/apimachinery/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/apimachinery
+
+Component: apiserver
+License Text URL: https://github.com/kubernetes/apiserver/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/apiserver
+
+Component: client-go
+License Text URL: https://github.com/kubernetes/client-go/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/client-go
+
+Component: code-generator
+License Text URL: https://github.com/kubernetes/code-generator/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/code-generator
+
+Component: gengo
+License Text URL: https://github.com/kubernetes/gengo/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/gengo
+
+Component: klog
+License Text URL: https://github.com/kubernetes/klog/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/klog
+
+Component: kube-openapi
+License Text URL: https://github.com/kubernetes/kube-openapi/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/kube-openapi
+
+Component: kubernetes
+License Text URL: https://github.com/kubernetes/kubernetes/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/kubernetes
+
+Component: utils
+License Text URL: https://github.com/kubernetes/utils/blob/master/LICENSE
+Source Code: https://github.com/kubernetes/utils
+
+================================================================================
+BSD-2-Clause
+================================================================================
+Component: errors
+License Text URL: https://github.com/pkg/errors/blob/master/LICENSE
+Source Code: https://github.com/pkg/errors
+
+================================================================================
+BSD-3-Clause
+================================================================================
+Component: purell
+License Text URL: https://github.com/PuerkitoBio/purell/blob/master/LICENSE
+Source Code: https://github.com/PuerkitoBio/purell
+
+Component: urlsec
+License Text URL: https://github.com/PuerkitoBio/urlesc/blob/master/LICENSE
+Source Code: https://github.com/PuerkitoBio/urlesc
+
+Component: protobuf
+License Text URL: https://github.com/golang/protobuf/blob/master/LICENSE
+Source Code: https://github.com/golang/protobuf
+
+Component: go-jmespath
+License Text URL: https://github.com/jmespath/go-jmespath/blob/master/LICENSE
+Source Code: https://github.com/jmespath/go-jmespath
+
+Component: GoLLRB
+License Text URL: https://github.com/petar/GoLLRB/blob/master/LICENSE
+Source Code: https://github.com/petar/GoLLRB
+
+Component: pflag
+License Text URL: https://github.com/spf13/pflag/blob/master/LICENSE
+Source Code: https://github.com/spf13/pflag
+
+Component: oauth2
+License Text URL: https://github.com/golang/oauth2/blob/master/LICENSE
+Source Code: https://github.com/golang/oauth2
+
+================================================================================
+ISC
+================================================================================
+Component: go-spew
+License Text URL: https://github.com/davecgh/go-spew/blob/master/LICENSE
+Source Code: https://github.com/davecgh/go-spew
+
+================================================================================
+MIT License
+================================================================================
+Component: perks
+License Text URL: https://github.com/beorn7/perks/blob/master/LICENSE
+Source Code: https://github.com/beorn7/perks
+
+Component: go-restful
+License Text URL: https://github.com/emicklei/go-restful/blob/master/LICENSE
+Source Code: https://github.com/emicklei/go-restful
+
+Component: yaml
+License Text URL: https://github.com/ghodss/yaml/blob/master/LICENSE
+Source Code: https://github.com/ghodss/yaml
+
+Component: httpcache
+License Text URL: LICENSE.txt
+Source Code: https://github.com/gregjones/httpcache
+
+Component: go
+License Text URL: https://github.com/json-iterator/go/blob/master/LICENSE
+Source Code: https://github.com/json-iterator/go
+
+Component: go-windows-terminal-sequences
+License Text URL: https://github.com/konsorten/go-windows-terminal-sequences/blob/master/LICENSE
+Source Code: https://github.com/konsorten/go-windows-terminal-sequences
+
+Component: easyjson
+License Text URL: https://github.com/mailru/easyjson/blob/master/LICENSE
+Source Code: https://github.com/mailru/easyjson
+
+Component: diskv
+License Text URL: https://github.com/peterbourgon/diskv/blob/master/LICENSE
+Source Code: https://github.com/peterbourgon/diskv
+
+Component: logrus
+License Text URL: https://github.com/sirupsen/logrus/blob/master/LICENSE
+Source Code: https://github.com/sirupsen/logrus
+
+Component: inf
+License Text URL: https://github.com/go-inf/inf/blob/v0.9.1/LICENSE
+Source Code: https://github.com/go-inf/inf
+
+Component: go-jose
+License Text URL: https://github.com/square/go-jose/blob/master/LICENSE
+Source Code: https://github.com/square/go-jose
+
+================================================================================
+MPL-2.0
+================================================================================
+Component: golang-lru
+License Text URL: https://github.com/hashicorp/golang-lru/blob/master/LICENSE
+Source Code: https://github.com/hashicorp/golang-lru
+
+================================================================================
+?
+================================================================================
+Component: protobug-f
+License Text URL: https://github.com/gogo/protobuf/blob/master/LICENSE
+Source Code: https://github.com/gogo/protobuf
+
+Component: crypto
+License Text URL: https://github.com/golang/crypto/blob/master/LICENSE
+Source Code: https://github.com/golang/crypto
+
+Component: net
+License Text URL: https://github.com/golang/net/blob/master/LICENSE
+Source Code: https://github.com/golang/net
+
+Component: sys
+License Text URL: LICENSE
+Source Code: https://github.com/golang/sys
+
+Component: text
+License Text URL: https://github.com/golang/text/blob/master/LICENSE
+Source Code: https://github.com/golang/text
+
+Component: time
+License Text URL: https://github.com/golang/time/blob/master/LICENSE
+Source Code: https://github.com/golang/time
+
+Component: tools
+License Text URL: https://github.com/golang/tools/blob/master/LICENSE
+Source Code: https://github.com/golang/tools
+
