@@ -21,12 +21,12 @@ import (
 	"reflect"
 )
 
-func CreateGaleraClaim(galspec *apigalera.GaleraSpec, claimName, clusterName, clusterNamespace, revision string, owner metav1.OwnerReference) *corev1.PersistentVolumeClaim {
+func CreateGaleraClaim(galspec *apigalera.GaleraSpec, labels map[string]string, claimName, clusterName, clusterNamespace, revision string, owner metav1.OwnerReference) *corev1.PersistentVolumeClaim {
 	claim := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name :     claimName,
 			Namespace: clusterNamespace,
-			Labels:    ClaimLabelsForGalera(clusterName, clusterNamespace, revision),
+			Labels:    ClaimLabelsForGalera(labels, clusterName, clusterNamespace, revision),
 		},
 		Spec: galspec.PersistentVolumeClaimSpec,
 	}

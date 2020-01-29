@@ -10,11 +10,10 @@ metadata:
   labels:
     stage: dev
     owner: sebs42
+    galera-cluster: galera
 spec:
   replicas: 3
   pod:
-    labels:
-      galera-cluster: galera
     credentialsSecret:
       name: galera-secret
 #    image: sebs42/mariadb:10.3.12-bionic

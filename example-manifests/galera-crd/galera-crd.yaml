@@ -52,7 +52,7 @@ spec:
   - name: MetricImage
     type: string
     description: Metric Image used by the current revision
-    JSONPath: .spec.pod.metricImage
+    JSONPath: .spec.pod.metric.image
   validation:
     openAPIV3Schema:
     # https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md
@@ -69,6 +69,7 @@ spec:
           properties:
             replicas:
               type: integer
+              format: int32
               enum:
               - 3
               - 5
@@ -97,15 +98,63 @@ spec:
               type: object
             revisionHistoryLimit:
               type: integer
+              format: int32
+        status:
+          type: object
+          properties:
+            observedGeneration:
+              type: integer
+              format: int64
+            phase:
+              type: string
+            serviceWriter:
+              type: string
+            serviceWriterBackup:
+              type: string
+            serviceReader:
+              type: string
+            serviceSpecial:
+              type: string
+            headlessService:
+              type: string
+            serviceMonitor:
+              type: string
+            podDisruptionBudgetName:
+              type: string
+            replics:
+              type: integer
+              format: int32
+#            members:
+#              type: objet
+            currentRevision:
+              type: string
+            currentReplicas:
+              type: integer
+              format: int32
+            nextRevision:
+              type: string
+            nextReplicas:
+              type: integer
+              format: int32
+            collisionCount:
+              type: integer
+              format: int32
+#            conditions:
+#              type: object
   # subresources describes the subresources for custom resources.
   subresources:
     # status enables the status subresource.
     status: {}
+    #  For PDB to work correctly, pods selected by PDB must have a specific controller reference.
+    #  The controller of Pods have to be Deployment, ReplicaSet, StatefulSet, RelicationController or CRD with scale subresource.
+    #  Refer following code.
+    #  https://github.com/kubernetes/kubernetes/blob/6348200c92dec8848e55552f3e8039b3da95bd91/pkg/controller/disruption/disruption.go#L178-L181
     # scale enables the scale subresource.
- #   scale:
+    scale:
       # specReplicasPath defines the JSONPath inside of a custom resource that corresponds to Scale.Spec.Replicas.
- #     specReplicasPath: .spec.replicas
+      specReplicasPath: .spec.replicas
       # statusReplicasPath defines the JSONPath inside of a custom resource that corresponds to Scale.Status.Replicas.
- #     statusReplicasPath: .status.replicas
+      statusReplicasPath: .status.replicas
       # labelSelectorPath defines the JSONPath inside of a custom resource that corresponds to Scale.Status.Selector.
- #     labelSelectorPath: .status.labelSelector
+#      labelSelectorPath: .status.labelSelector
+

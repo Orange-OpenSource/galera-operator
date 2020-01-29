@@ -49,13 +49,13 @@ Galera Operator needs to have some rights on the Kubernetes cluster if RBAC (rec
 ```bash
 $ kubectl apply -f  ./example-manifests/galera-operator/10-operator-sa.yaml
 $ kubectl apply -f  ./example-manifests/galera-operator/20-role.yaml
-$ kubectl apply -f  ./example-manifests/galera-operator/30-role-binding.yaml`
+$ kubectl apply -f  ./example-manifests/galera-operator/30-role-binding.yaml
 ```
 
 Deploy the operator using a deployment:
  
 ```bash
-$ kubectl apply -f  ./example-manifests/galera-operator/40-operator-deployment
+$ kubectl apply -f  ./example-manifests/galera-operator/40-operator-deployment.yaml
 ```
  
 note: Galera Operator can be deployed to be clusterwide, a flag must be set when deploying Galera Operator, and rights must use clusterRole and clusterRoleBinding 
@@ -84,6 +84,12 @@ $ kubectl apply -f ./example-manifests/galera-cluster/30-galera-secret.yaml
 $ kubectl apply -f ./example-manifests/galera-cluster/40-galera.yaml
 ```
 
+If Prometheus Operator is deployed and if a metric image is provided, you can collect metrics:
+
+```bash
+$ kubectl apply -f  ./example-manifests/galera-monitoring/galera-monitor.yaml
+```
+
 ### Resize Galera Cluster
 
 Galera cluster can be resized in different ways:
@@ -105,15 +111,18 @@ TODO : new CRDs provided to the operator will be used to implement plugins and c
 Galera clusters can be backuped:
 
 ```bash
-$ kubectl apply -f ./example-manifests/galera-backup/10-galera-backup.yaml
+$ kubectl apply -f ./example-manifests/galera-backup/10-backup-secret.yaml
 $ kubectl apply -f ./example-manifests/galera-backup/20-galera-backup.yaml
 ```
 
 ### Restore Galera Cluster        
 
-Galera clusters can be restored:
+Galera clusters can be restored (you need to specify the name of the gzip file) :
 
 ```bash
+$ kubectl -n galera get gl
+NAME            TIMESTARTED   TIMECOMPLETED   LOCATION                                  METHOD        PROVIDER
+galera-backup                 14m             gal-galera-backup.20200128172501.sql.gz   mariabackup   S3
 $ kubectl apply -f ./example-manifests/galera-restore/restore-galera.yaml
 ```
 

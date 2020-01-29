@@ -42,7 +42,8 @@ func NewGaleraHeadlessService(galLabels map[string]string, clusterName, clusterN
 }
 
 func newGaleraService(galLabels map[string]string, clusterName, clusterNamespace, svcName, role string) *corev1.Service {
-	labels := ServiceSelectorForGalera(clusterName, clusterNamespace, role)
+	labels := serviceSelectorForGalera(clusterName, clusterNamespace, role)
+	mergeLabels(labels, galLabels)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -58,7 +59,8 @@ func newGaleraService(galLabels map[string]string, clusterName, clusterNamespace
 }
 
 func newGaleraServiceMonitor(galLabels map[string]string, clusterName, clusterNamespace, svcName string, port int32) *corev1.Service {
-	labels := ServiceSelectorForGalera(clusterName, clusterNamespace, "")
+	labels := serviceSelectorForGalera(clusterName, clusterNamespace, "")
+	mergeLabels(labels, galLabels)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -74,18 +76,13 @@ func newGaleraServiceMonitor(galLabels map[string]string, clusterName, clusterNa
 }
 
 func newGaleraHeadlessService(galLabels map[string]string, clusterName, clusterNamespace, svcName string) *corev1.Service {
-	labels := ServiceSelectorForGalera(clusterName, clusterNamespace,"")
+	labels := serviceSelectorForGalera(clusterName, clusterNamespace,"")
+	mergeLabels(labels, galLabels)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: svcName,
 			Labels: galLabels,
-			/*
-			// TODO: deprecated : check if still needed
-			Annotations: map[string]string{
-				"service.alpha.kubernetes.io/tolerate-unready-endpoints": "true",
-			},
-			*/
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: galeraServicePorts(),

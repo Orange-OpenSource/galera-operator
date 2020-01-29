@@ -26,6 +26,9 @@ LDFLAGS=-ldflags="-w -s -X galera-operator/pkg/version.Version=$(TAG) -X galera-
 .PHONY: build container push clean codegen test
 
 build:
+	echo $(TAG)
+	echo $(DATE)
+	echo $(GITSHA)
 	GOOS=linux GOARCH=amd64 go build ${LDFLAGS} -o $(OUTPUT_DIR)/$(APP_NAME) cmd/galera-operator/main.go
 
 container: build

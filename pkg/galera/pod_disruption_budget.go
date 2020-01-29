@@ -16,31 +16,25 @@ package galera
 
 import (
 	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
-	"github.com/sirupsen/logrus"
 	policyv1 "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func NewGaleraPodDisruptionBudget(galspec *apigalera.GaleraSpec, clusterName, clusterNamespace, pdbName string, maxUnavailable int, owner metav1.OwnerReference) *policyv1.PodDisruptionBudget {
-	pdb := newGaleraPodDisruptionBudget(galspec, clusterName, clusterNamespace, pdbName, maxUnavailable)
+func NewGaleraPodDisruptionBudget(galspec *apigalera.GaleraSpec, labels map[string]string, clusterName, clusterNamespace, pdbName string, maxUnavailable int, owner metav1.OwnerReference) *policyv1.PodDisruptionBudget {
+	pdb := newGaleraPodDisruptionBudget(galspec, labels, clusterName, clusterNamespace, pdbName, maxUnavailable)
 	addOwnerRefToObject(pdb.GetObjectMeta(), owner)
-
-	logrus.Infof("SEB: PDB owner = %+v", owner)
-	logrus.Infof("SEB: PDB owner.controller = %t", *owner.Controller)
 
 	return pdb
 }
 
-func newGaleraPodDisruptionBudget(galspec *apigalera.GaleraSpec, clusterName, clusterNamespace, pdbName string, maxUnavailable int) *policyv1.PodDisruptionBudget {
-	labels := LabelsForGalera(clusterName, clusterNamespace)
-
+func newGaleraPodDisruptionBudget(galspec *apigalera.GaleraSpec, labels map[string]string, clusterName, clusterNamespace, pdbName string, maxUnavailable int) *policyv1.PodDisruptionBudget {
 	i :=  intstr.FromInt(maxUnavailable)
 
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: pdbName,
-			Labels: labels,
+			Labels: labelsForGalera(labels, clusterName, clusterNamespace),
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
 			Selector: metav1.SetAsLabelSelector(labels),

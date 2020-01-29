@@ -22,7 +22,6 @@ import (
 	pkggalera "galera-operator/pkg/galera"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -177,7 +176,7 @@ func isClaimMemberOf(galera *apigalera.Galera, claim *corev1.PersistentVolumeCla
 func getPersistentVolumeClaim(galera *apigalera.Galera, pod *corev1.Pod) *corev1.PersistentVolumeClaim {
 	suffix := getPodSuffix(pod)
 	claimName := getPersistentVolumeClaimName(galera, suffix)
-	claim := pkggalera.CreateGaleraClaim(&galera.Spec, claimName, galera.Name, galera.Namespace, getPodRevision(pod), galera.AsOwner())
+	claim := pkggalera.CreateGaleraClaim(&galera.Spec, galera.Labels, claimName, galera.Name, galera.Namespace, getPodRevision(pod), galera.AsOwner())
 
 	return claim
 }
@@ -185,7 +184,7 @@ func getPersistentVolumeClaim(galera *apigalera.Galera, pod *corev1.Pod) *corev1
 func getBackupPersistentVolumeClaim(galera *apigalera.Galera, pod *corev1.Pod) *corev1.PersistentVolumeClaim {
 	suffix := getPodSuffix(pod)
 	claimName := getBackupPersistentVolumeClaimName(galera, suffix)
-	claim := pkggalera.CreateGaleraClaim(&galera.Spec, claimName, galera.Name, galera.Namespace, getPodRevision(pod), galera.AsOwner())
+	claim := pkggalera.CreateGaleraClaim(&galera.Spec, galera.Labels, claimName, galera.Name, galera.Namespace, getPodRevision(pod), galera.AsOwner())
 
 	return claim
 }
@@ -316,6 +315,7 @@ func newGaleraPod(galera *apigalera.Galera, revision, podName, role, state, addr
 
 	return pkggalera.NewGaleraPod(
 			&galera.Spec,
+			galera.Labels,
 			podName,
 			galera.Name,
 			galera.Namespace,
@@ -422,9 +422,11 @@ func newNextRevision(revisions []*appsv1.ControllerRevision) int64 {
 	return revisions[count-1].Revision + 1
 }
 
+/*
 func selectorForGalera(clusterName, clusterNamespace string) (labels.Selector, error) {
 	return pkggalera.SelectorForGalera(clusterName, clusterNamespace)
 }
+*/
 
 // completeRollingUpdate completes a rolling update when all of galera's replica Pods have been updated
 // to the updateRevision. status's currentRevision is galera to updateRevision and its' updateRevision

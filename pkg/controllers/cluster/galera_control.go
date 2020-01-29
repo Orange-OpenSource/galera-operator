@@ -131,8 +131,6 @@ func (gc *defaultGaleraControl) SyncGalera(galera *apigalera.Galera, pods []*cor
 		}
 	}
 
-	// TODO : implement PDB
-	/*
 	// Create or Update PodDisruptionBudget for Galera
 	pdbName, err := gc.podDBControl.CreateOrUpdateGaleraPDB(galera)
 	if err != nil {
@@ -142,7 +140,6 @@ func (gc *defaultGaleraControl) SyncGalera(galera *apigalera.Galera, pods []*cor
 		return err
 	}
 	status.PodDisruptionBudgetName = pdbName
-	*/
 
 	// update the galera's status
 	err = gc.updateGaleraStatus(galera, status)

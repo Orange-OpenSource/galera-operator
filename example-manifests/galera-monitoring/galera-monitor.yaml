@@ -9,6 +9,8 @@ spec:
   selector:
     matchLabels:
       galera-cluster: galera
+      owner: sebs42
+      stage: dev
   namespaceSelector:
     matchNames:
       - galera
@@ -16,17 +18,3 @@ spec:
     - port: metrics
       interval: 10s
       scheme: http
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: galera-metric-service
-  namespace: galera
-  labels:
-    galera-cluster: galera
-spec:
-  selector:
-    galera-cluster: galera
-  ports:
-    - name: metrics
-      port: 9104

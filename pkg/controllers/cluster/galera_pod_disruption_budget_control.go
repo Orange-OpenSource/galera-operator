@@ -57,7 +57,7 @@ func (gpc *realGaleraPodDisruptionBudgetControl) CreateOrUpdateGaleraPDB(galera 
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gpc.logger.Infof("Creating a new PodDisruptionBudget for cluster %s called %s", galera.Name, pdbName)
-		pdb = pkggalera.NewGaleraPodDisruptionBudget(&galera.Spec, galera.Name, galera.Namespace, pdbName, 1, galera.AsOwner())
+		pdb = pkggalera.NewGaleraPodDisruptionBudget(&galera.Spec, galera.Labels, galera.Name, galera.Namespace, pdbName, 1, galera.AsOwner())
 		_, err = gpc.client.PolicyV1beta1().PodDisruptionBudgets(galera.Namespace).Create(pdb)
 		return pdbName, err
 	} else {

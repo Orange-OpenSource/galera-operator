@@ -21,16 +21,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func NewGaleraPod(galspec *apigalera.GaleraSpec, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state string,
+func NewGaleraPod(galspec *apigalera.GaleraSpec, labels map[string]string , name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state string,
 	init bool, credsMap map[string]string, owner metav1.OwnerReference) *corev1.Pod {
-	pod := newGaleraPod(galspec, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state, init, credsMap)
+	pod := newGaleraPod(galspec, labels, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state, init, credsMap)
 	applyPodTemplate(pod, galspec.Pod, role)
 
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }
 
-func newGaleraPod(galspec *apigalera.GaleraSpec, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state string,
+func newGaleraPod(galspec *apigalera.GaleraSpec, labels map[string]string, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state string,
 	init bool, credsMap map[string]string) *corev1.Pod {
 	bootstrap := bootstrapContainer(bootstrapImage, credsMap["user"], credsMap["password"], clusterName, name, addresses, state)
 	container := galeraContainer(galspec.Pod.Image, credsMap["user"], credsMap["password"], role)
@@ -76,7 +76,7 @@ func newGaleraPod(galspec *apigalera.GaleraSpec, name, clusterName, clusterNames
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
-			Labels: PodLabelsForGalera(clusterName, clusterNamespace, role, revision, state),
+			Labels: PodLabelsForGalera(labels, clusterName, clusterNamespace, role, revision, state),
 		},
 		Spec: corev1.PodSpec{
 			InitContainers:               []corev1.Container{bootstrap},

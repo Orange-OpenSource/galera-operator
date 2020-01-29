@@ -20,7 +20,7 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: galera-operator-service
+  name: galera-operator-metrics
   namespace: galera
   labels:
     app: galera-operator

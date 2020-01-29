@@ -59,21 +59,42 @@ spec:
          spec:
            type: object
            required:
-           - galera
+           - galeraName
            - backupMethodType
            - storageProviderType
            properties:
-             galera:
+             galeraName:
+               type: string
+             galeraNamespace:
                type: string
              schedule:
                type: string
                pattern: '^(\d+|\*)(/\d+)?(\s+(\d+|\*)(/\d+)?){4}$'
              backupMethod:
                type: string
-               oneOf: ["mariabackup"]
+               enum: [mariabackup]
+             mariabackup:
+               type: object
              storageProvider:
                type: string
-               oneOf: ["S3"]
+               enum: [S3]
+             s3:
+               type: object
+               required:
+               - endpoint
+               - bucket
+               properties:
+                 region:
+                   type: string
+                 endpoint:
+                   type: string
+                 bucket:
+                   type: string
+         status:
+           type: object
+           properties:
+             outcomeLocation:
+               type: string
   # subresources describes the subresources for custom resources.
   subresources:
     # status enables the status subresource.

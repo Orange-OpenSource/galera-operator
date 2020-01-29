@@ -80,7 +80,7 @@ func (gl *galeraLister) GetPodGaleras(pod *corev1.Pod) ([]*apigalera.Galera, err
 		if pg.Namespace != pod.Namespace {
 			continue
 		}
-		selector, err = pkggalera.SelectorForGalera(pg.Name, pg.Namespace)
+		selector, err = pkggalera.SelectorForGalera(pg.Labels, pg.Name, pg.Namespace)
 		if err != nil {
 			return nil, fmt.Errorf("invalid selector: %v", err)
 		}
@@ -121,7 +121,7 @@ func (gl *galeraLister) GetClaimGaleras(claim *corev1.PersistentVolumeClaim) ([]
 		if pg.Namespace != claim.Namespace {
 			continue
 		}
-		selector, err = pkggalera.SelectorForGalera(pg.Name, pg.Namespace)
+		selector, err = pkggalera.SelectorForGalera(pg.Labels, pg.Name, pg.Namespace)
 		if err != nil {
 			return nil, fmt.Errorf("invalid selector: %v", err)
 		}

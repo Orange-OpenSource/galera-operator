@@ -800,7 +800,7 @@ func (gc *GaleraController) syncHandler(key string) error {
 		return err
 	}
 
-	selector, err := pkggalera.SelectorForGalera(galera.Name, galera.Namespace)
+	selector, err := pkggalera.SelectorForGalera(galera.Labels, galera.Name, galera.Namespace)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("error converting Galera %s/%s selector: %v", galera.Namespace, galera.Name, err))
 		// This is a non-transient error, so don't retry.

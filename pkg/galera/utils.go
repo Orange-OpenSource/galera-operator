@@ -23,43 +23,41 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func PodLabelsForGalera(clusterName, clusterNamespace, role, revision, state string) map[string]string {
-	m := map[string]string{
-		apigalera.GaleraClusterName:      clusterName,
-		apigalera.GaleraClusterNamespace: clusterNamespace,
-		apigalera.GaleraStateLabel:       state,
-		apigalera.GaleraRevisionLabel:    revision,
-	}
+func PodLabelsForGalera(labels map[string]string, clusterName, clusterNamespace, role, revision, state string) map[string]string {
+	labels[apigalera.GaleraClusterName]      = clusterName
+	labels[apigalera.GaleraClusterNamespace] = clusterNamespace
+	labels[apigalera.GaleraStateLabel]       = state
+	labels[apigalera.GaleraRevisionLabel]    = revision
 
 	switch role {
 	case apigalera.RoleWriter:
-		m[apigalera.GaleraRoleLabel] = role
-		m[apigalera.GaleraReaderLabel] = "false"
+		labels[apigalera.GaleraRoleLabel]   = role
+		labels[apigalera.GaleraReaderLabel] = "false"
 	case apigalera.RoleBackupWriter:
-		m[apigalera.GaleraRoleLabel] = role
-		m[apigalera.GaleraReaderLabel] = "true"
+		labels[apigalera.GaleraRoleLabel]   = role
+		labels[apigalera.GaleraReaderLabel] = "true"
 	case apigalera.Backup:
-		m[apigalera.GaleraBackupLabel] = "true"
-		m[apigalera.GaleraReaderLabel] = "true"
+		labels[apigalera.GaleraBackupLabel] = "true"
+		labels[apigalera.GaleraReaderLabel] = "true"
 	case apigalera.Restore:
-		m[apigalera.GaleraRoleLabel] = role
+		labels[apigalera.GaleraRoleLabel]   = role
 	case apigalera.Reader:
-		m[apigalera.GaleraReaderLabel] = "true"
+		labels[apigalera.GaleraReaderLabel] = "true"
 	case apigalera.RoleSpecial:
-		m[apigalera.GaleraRoleLabel] = role
-		m[apigalera.GaleraReaderLabel] = "false"
+		labels[apigalera.GaleraRoleLabel]   = role
+		labels[apigalera.GaleraReaderLabel] = "false"
 	default:
 	}
 
-	return m
+	return labels
 }
 
-func ClaimLabelsForGalera(clusterName, clusterNamespace, revision string) map[string]string {
-	return map[string]string{
-		apigalera.GaleraClusterName:      clusterName,
-		apigalera.GaleraClusterNamespace: clusterNamespace,
-		apigalera.GaleraRevisionLabel:    revision,
-	}
+func ClaimLabelsForGalera(labels map[string]string, clusterName, clusterNamespace, revision string) map[string]string {
+	labels[apigalera.GaleraClusterName]      = clusterName
+	labels[apigalera.GaleraClusterNamespace] = clusterNamespace
+	labels[apigalera.GaleraRevisionLabel]    = revision
+
+	return labels
 }
 
 func buildName(name, prefix string) string {
@@ -80,14 +78,14 @@ func BuildBackupClaimNameForGalera(podName string) string {
 	return buildName(podName, apigalera.BackupClaimPrefix)
 }
 
-func LabelsForGalera(clusterName, clusterNamespace string) map[string]string {
-	return map[string]string{
-		apigalera.GaleraClusterName:      clusterName,
-		apigalera.GaleraClusterNamespace: clusterNamespace,
-	}
+func labelsForGalera(labels map[string]string, clusterName, clusterNamespace string) map[string]string {
+	labels[apigalera.GaleraClusterName]      = clusterName
+	labels[apigalera.GaleraClusterNamespace] = clusterNamespace
+
+	return labels
 }
 
-func ServiceSelectorForGalera(clusterName, clusterNamespace, role string) map[string]string {
+func serviceSelectorForGalera(clusterName, clusterNamespace, role string) map[string]string {
 	switch role {
 	case apigalera.RoleWriter:
 		return map[string]string{
@@ -122,8 +120,8 @@ func ServiceSelectorForGalera(clusterName, clusterNamespace, role string) map[st
 	}
 }
 
-func SelectorForGalera(clusterName, clusterNamespace string) (labels.Selector, error) {
-	return metav1.LabelSelectorAsSelector(metav1.SetAsLabelSelector(LabelsForGalera(clusterName, clusterNamespace)))
+func SelectorForGalera(labels map[string]string ,clusterName, clusterNamespace string) (labels.Selector, error) {
+	return metav1.LabelSelectorAsSelector(metav1.SetAsLabelSelector(labelsForGalera(labels, clusterName, clusterNamespace)))
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {

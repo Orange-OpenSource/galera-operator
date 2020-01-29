@@ -44,7 +44,7 @@ spec:
           httpGet:
             path: /probe
             port: 8080
-          livenessProbe:
-            httpGet:
-              path: /probe
-              port: 8080
+        livenessProbe:
+          httpGet:
+            path: /probe
+            port: 8080

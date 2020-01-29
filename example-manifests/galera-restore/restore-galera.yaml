@@ -7,10 +7,14 @@ metadata:
   ## namespaced operators ignore it
   #annotations:
   #  sql.databases/scope: clusterwide
+  labels:
+    stage: dev
+    owner: sebs42
+    galera-cluster: restore
 spec:
   replicas: 3
   restore:
-    name: gal-galera-backup.20191007093230.sql.gz
+    name: gal-galera-backup.20200128172501.sql.gz
     storageProviderType: S3
     s3:
       #region:
@@ -63,7 +67,7 @@ spec:
           cpu: 200m
           memory: 2Gi
       port: 9104
-    priorityClassName: high-priority
+    priorityClassName: database-priority
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
@@ -72,7 +76,7 @@ spec:
                 - key: galera-cluster
                   operator: In
                   values:
-                    - gal-restore
+                    - restore
             topologyKey: kubernetes.io/hostname
   persistentVolumeClaimSpec:
     accessModes: [ "ReadWriteOnce" ]

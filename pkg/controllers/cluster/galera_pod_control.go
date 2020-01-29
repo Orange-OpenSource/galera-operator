@@ -95,7 +95,7 @@ func (gpc *realGaleraPodControl) CreatePodAndClaim(galera *apigalera.Galera, pod
 		gpc.recordPodEvent("create", galera, pod, err)
 		return err
 	}
-//	if role == apigalera.Backup || role == apigalera.Restore {
+
 	if role == apigalera.Backup {
 		if err := gpc.createBackupPersistentVolumeClaim(galera, pod); err != nil {
 			gpc.recordPodEvent("create", galera, pod, err)
@@ -120,58 +120,6 @@ type patchStringValue struct {
 	Path  string `json:"path"`
 	Value map[string]string `json:"value"`
 }
-
-// kubectl -n galera patch pod busybox --type=json -p='[{"op": "add", "path": "/metadata/labels/this", "value": "that"}]'
-//https://dwmkerr.com/patching-kubernetes-resources-in-golang/
-//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#patch-operations
-//https://gist.github.com/coresolve/364c80b817eb8d84bfb1c6e2c94d2886
-
-/*
-package main
-
-import (
-"fmt"
-)
-
-type PatchAction func(map[string]string) map[string]string
-
-func AddLetter(key, value string) PatchAction {
-	return func(m map[string]string) map[string]string {
-		m[key] = value
-		return m
-	}
-}
-
-func DeleteLetter(key string) PatchAction {
-	return func(m map[string]string) map[string]string {
-		delete(m, key)
-		return m
-	}
-}
-
-func patch(m map[string]string, actions ...PatchAction) map[string]string {
-
-	for _, action := range actions {
-		m = action(m)
-	}
-	return m
-}
-
-func main() {
-	m := make(map[string]string)
-	m["a"] = "la lettre a"
-	m["b"] = "la lettre b"
-	m["c"] = "la lettre c"
-
-	fmt.Println(m)
-
-	m2 := patch(m, AddLetter("d", "la lettre d"), DeleteLetter("a"))
-
-	fmt.Println(m2)
-
-	fmt.Println("Hello, playground")
-}
-*/
 
 type PatchAction func(map[string]string) map[string]string
 
@@ -255,7 +203,7 @@ func (gpc *realGaleraPodControl) PatchClaimLabels(galera *apigalera.Galera, pod 
 	labelsPayload := []patchStringValue{{
 		Op:    "replace",
 		Path:  "/metadata/labels",
-		Value: pkggalera.ClaimLabelsForGalera(galera.Name, galera.Namespace, revision),
+		Value: pkggalera.ClaimLabelsForGalera(galera.Labels, galera.Name, galera.Namespace, revision),
 	}}
 	labelsPayloadBytes, _ := json.Marshal(labelsPayload)
 
