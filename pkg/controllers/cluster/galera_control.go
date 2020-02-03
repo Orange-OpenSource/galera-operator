@@ -1405,6 +1405,8 @@ func (gc *defaultGaleraControl) createOrUpdateServices(galera *apigalera.Galera,
 					return err
 				}
 				status.ServiceMonitor = svcMonitorName
+
+				// TODO: we should consider creating the ServiceMonitor from API monitoring.coreos.com/v1 instead of having a separate yaml
 			}
 
 			svcInternal, err := gc.serviceControl.CreateOrUpdateGaleraServiceInternal(galera)

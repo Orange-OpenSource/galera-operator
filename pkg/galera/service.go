@@ -116,6 +116,11 @@ func galeraMonitorPorts(port int32) []corev1.ServicePort {
 func galeraServicePorts() []corev1.ServicePort {
 	return []corev1.ServicePort{
 		{
+			Name:     "mysql",
+			Port:     int32(apigalera.MySQLPort),
+			Protocol: corev1.ProtocolTCP,
+		},
+		{
 			Name:     "sst",
 			Port:     int32(apigalera.StateSnapshotTransfertPort),
 			Protocol: corev1.ProtocolTCP,

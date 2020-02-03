@@ -83,7 +83,7 @@ type GaleraStatus struct {
 	HeadlessService string `json:"headlessService"`
 
 	// ServiceMonitor is the LB service for accessing all Galera nodes if a sidecar for monitoring is deployed
-	ServiceMonitor string `json:"serviceSpecial,omitempty"`
+	ServiceMonitor string `json:"serviceMonitor,omitempty"`
 
 	// PodDisruptionBudgetName is the PodDisruptionBudget associated with the galera cluster
 	PodDisruptionBudgetName string `json:"podDisruptionBudgetName"`

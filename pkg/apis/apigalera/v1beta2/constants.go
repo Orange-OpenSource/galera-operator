@@ -91,6 +91,8 @@ const (
 	MaxServiceSpecialLength = MaxK8SNameLength - len(ServiceSpecialSuffix)
 	ServiceMonitorSuffix = "-monitor-svc"
 	MaxServiceMonitorLength = MaxK8SNameLength - len(ServiceMonitorSuffix)
+	HeadlessServiceSuffix = "-hl-svc"
+	MaxHeadlessServiceLength = MaxK8SNameLength - len(HeadlessServiceSuffix)
 	PodDisruptionBudgetSuffix = "-pdb"
 	MaxPodDisruptionBudgetLength = MaxK8SNameLength - len(PodDisruptionBudgetSuffix)
 )

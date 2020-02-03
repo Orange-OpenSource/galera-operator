@@ -155,6 +155,7 @@ spec:
       specReplicasPath: .spec.replicas
       # statusReplicasPath defines the JSONPath inside of a custom resource that corresponds to Scale.Status.Replicas.
       statusReplicasPath: .status.replicas
+      # Optional
       # labelSelectorPath defines the JSONPath inside of a custom resource that corresponds to Scale.Status.Selector.
 #      labelSelectorPath: .status.labelSelector
 

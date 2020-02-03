@@ -79,7 +79,7 @@ func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceWriter(galera *a
 		svc := pkggalera.NewGaleraService(galera.ObjectMeta.Labels, galera.Name, galera.Namespace, svcName, apigalera.RoleWriter, galera.AsOwner())
 		_, err = gsc.client.CoreV1().Services(galera.Namespace).Create(svc)
 	}
-	return svcName, err
+	return svcName, nil
 }
 
 func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceWriterBackup(galera *apigalera.Galera) (string, error) {
@@ -131,7 +131,7 @@ func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceMonitor(galera *
 }
 
 func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceInternal(galera *apigalera.Galera) (string, error) {
-	svcName := getServiceName(galera.Name, apigalera.ServiceWriterSuffix, apigalera.MaxServiceWriterLength)
+	svcName := getServiceName(galera.Name, apigalera.HeadlessServiceSuffix, apigalera.MaxHeadlessServiceLength)
 	_, err := gsc.serviceLister.Services(galera.Namespace).Get(svcName)
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {

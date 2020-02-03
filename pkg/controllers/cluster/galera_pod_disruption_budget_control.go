@@ -59,10 +59,8 @@ func (gpc *realGaleraPodDisruptionBudgetControl) CreateOrUpdateGaleraPDB(galera 
 		gpc.logger.Infof("Creating a new PodDisruptionBudget for cluster %s called %s", galera.Name, pdbName)
 		pdb = pkggalera.NewGaleraPodDisruptionBudget(&galera.Spec, galera.Labels, galera.Name, galera.Namespace, pdbName, 1, galera.AsOwner())
 		_, err = gpc.client.PolicyV1beta1().PodDisruptionBudgets(galera.Namespace).Create(pdb)
-		return pdbName, err
-	} else {
-		return "", err
 	}
+	return pdbName, err
 }
 
 func getPDBName(clusterName string) string {

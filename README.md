@@ -35,7 +35,6 @@ $ kubectl apply -f ./example-manifests/galera-crd/galera-crd.yaml
 $ kubectl apply -f ./example-manifests/galera-crd/galerabackup-crd.yaml
 $ kubectl apply -f ./example-manifests/galera-crd/upgrade-config-crd.yaml
 $ kubectl apply -f ./example-manifests/galera-crd/upgrade-rule-crd.yaml
-
 ```
 
 Now we can create a Kubernetes namespace in order to host Galera Operator.
