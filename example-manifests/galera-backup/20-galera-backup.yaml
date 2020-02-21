@@ -13,7 +13,7 @@ spec:
   storageProviderType: S3
   s3:
 #    region:
-    endpoint: http://minio.apps-rocks.fr
+    endpoint: $YOURENDPOINT
     bucket: save
 #    forcePathStyle:
     credentialsSecret:

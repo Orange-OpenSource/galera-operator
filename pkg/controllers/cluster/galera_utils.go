@@ -189,8 +189,10 @@ func getBackupPersistentVolumeClaim(galera *apigalera.Galera, pod *corev1.Pod) *
 	return claim
 }
 
-func isClaimMatching(galera *apigalera.Galera, claim *corev1.PersistentVolumeClaim) bool {
-	return pkggalera.CheckClaim(galera, claim)
+// isClaimMatching tests if the PVC is matching the claim spec of the galera cluster. The default storage class name
+// must be given in case the requested claim does not specify any class and use the default class
+func isClaimMatching(galera *apigalera.Galera, claim *corev1.PersistentVolumeClaim, defaultSCName string) bool {
+	return pkggalera.CheckClaim(galera, claim, defaultSCName)
 }
 
 // isOneContainerTerminated returns true is one container in the pod is terminated
@@ -237,7 +239,13 @@ func isHealthy(pod *corev1.Pod) bool {
 	return isRunningAndReady(pod) && !isTerminating(pod)
 }
 
-//
+// isClaimTerminating returns true if pvc's DeletionTimestamp has been set
+func isClaimTerminating(claim *corev1.PersistentVolumeClaim) bool {
+	return claim.DeletionTimestamp != nil
+}
+
+// getBootstrapAddresses returns a string containing addresses used to join galera cluster. An empty string
+// means a new galera cluster will be created.
 func getBootstrapAddresses(pods []*corev1.Pod) string {
 	m := make(map[*corev1.Pod]string)
 	for _, pod  := range pods {
@@ -421,12 +429,6 @@ func newNextRevision(revisions []*appsv1.ControllerRevision) int64 {
 	}
 	return revisions[count-1].Revision + 1
 }
-
-/*
-func selectorForGalera(clusterName, clusterNamespace string) (labels.Selector, error) {
-	return pkggalera.SelectorForGalera(clusterName, clusterNamespace)
-}
-*/
 
 // completeRollingUpdate completes a rolling update when all of galera's replica Pods have been updated
 // to the updateRevision. status's currentRevision is galera to updateRevision and its' updateRevision

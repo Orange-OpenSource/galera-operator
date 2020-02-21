@@ -30,7 +30,6 @@ spec:
       name: galera-secret
 #    image: sebs42/mariadb:10.3.12-bionic
     image: sebs42/mariadb:10.4.2-bionic
-#    mycnfConfigMap: {galeraconf}
     mycnfConfigMap:
       name: galeraconf
     resources:
@@ -46,13 +45,11 @@ spec:
           secretKeyRef:
             name: galera-secret
             key: password
-#        value: "test"
       - name: EXPORTER_PASSWORD
         valueFrom:
           secretKeyRef:
             name: galera-secret
             key: exporter-password
-#        value: "etest"
     metric:
       image: prom/mysqld-exporter:v0.11.0
       env:

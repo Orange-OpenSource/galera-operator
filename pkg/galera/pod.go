@@ -19,6 +19,7 @@ import (
 	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func NewGaleraPod(galspec *apigalera.GaleraSpec, labels map[string]string , name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state string,
@@ -144,8 +145,8 @@ func galeraContainer(image, user, password , role string) corev1.Container {
 		Args:            argContainer,
 		ImagePullPolicy: corev1.PullAlways,
 		Ports:           galeraContainerPorts(),
-		LivenessProbe:   galeraLivenessProbe(user, password),
-		ReadinessProbe:  galeraReadinessProbe(user, password),
+		LivenessProbe:   galeraProbe(user, password),
+		ReadinessProbe:  galeraProbe(user, password),
 		VolumeMounts:    mounts,
 	}
 }
@@ -156,8 +157,8 @@ func metricContainer(image string, envVar []corev1.EnvVar, port int32) corev1.Co
 		Name:            apigalera.MetricContainerName,
 		ImagePullPolicy: corev1.PullAlways,
 		Ports:           metricContainerPorts(port),
+		LivenessProbe:   metricProbe(port),
 		Env:             envVar,
-		// TODO : add liveness & readiness probes
 	}
 }
 
@@ -193,8 +194,8 @@ func backupContainer(image, role string) corev1.Container {
 								ContainerPort: int32(apigalera.BackupAPIPort),
 								Protocol:      corev1.ProtocolTCP,
 							},
-						},
-		// TODO : add liveness & readiness probes
+						 },
+		LivenessProbe:   backupProbe(),
 		VolumeMounts:    []corev1.VolumeMount{mount},
 	}
 }
@@ -354,7 +355,8 @@ func restoreVolumeMount() corev1.VolumeMount {
 	}
 }
 
-func galeraReadinessProbe(user, password string) *corev1.Probe {
+/*
+func galeraProbe(user, password string) *corev1.Probe {
 	cmd := []string{"mysql", "-h", "localhost"}
 //	cmd := []string{"mysql", "-h", "127.0.0.1"}
 	cmd = append(cmd, fmt.Sprintf("-u%s", user))
@@ -374,8 +376,9 @@ func galeraReadinessProbe(user, password string) *corev1.Probe {
 //		FailureThreshold:    3,
 	}
 }
+*/
 
-func galeraLivenessProbe(user, password string) *corev1.Probe {
+func galeraProbe(user, password string) *corev1.Probe {
 	cmd := []string{"mysqladmin"}
 	cmd = append(cmd, fmt.Sprintf("-u%s", user))
 	cmd = append(cmd, fmt.Sprintf("-p%s", password))
@@ -387,11 +390,43 @@ func galeraLivenessProbe(user, password string) *corev1.Probe {
 				Command: cmd,
 			},
 		},
-		InitialDelaySeconds: 15,
+		InitialDelaySeconds: 30,
 //		TimeoutSeconds:      1,
 //		PeriodSeconds:       10,
 //		SuccessThreshold:    1,
 //		FailureThreshold:    3,
+	}
+}
+
+func metricProbe(port int32) *corev1.Probe {
+	return &corev1.Probe{
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path: "/",
+				Port: intstr.IntOrString{IntVal: port},
+			},
+		},
+		InitialDelaySeconds: 30,
+		//		TimeoutSeconds:      1,
+		//		PeriodSeconds:       10,
+		//		SuccessThreshold:    1,
+		//		FailureThreshold:    3,
+	}
+}
+
+func backupProbe() *corev1.Probe {
+	return &corev1.Probe{
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path: "/probe",
+				Port: intstr.IntOrString{IntVal: apigalera.BackupAPIPort},
+			},
+		},
+		InitialDelaySeconds: 5,
+		//		TimeoutSeconds:      1,
+		//		PeriodSeconds:       10,
+		//		SuccessThreshold:    1,
+		//		FailureThreshold:    3,
 	}
 }
 

@@ -28,11 +28,11 @@ rules:
       - pods
       - pods/exec
       - services
-      - secrets
-      - endpoints
+      #      - secrets
+      #      - endpoints
       - persistentvolumeclaims
       - events
-      - configmaps
+    #      - configmaps
     verbs:
       - "*"
   - apiGroups:
@@ -45,11 +45,22 @@ rules:
       - ""
     resources:
       - secrets
+      - configmaps
     verbs:
       - get
+      - list
+      - watch
   - apiGroups:
       - apps
     resources:
       - controllerrevisions
     verbs:
       - "*"
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses
+    verbs:
+      - get
+      - list
+      - watch

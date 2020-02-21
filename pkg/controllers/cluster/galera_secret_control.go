@@ -63,6 +63,8 @@ func (gsc *realGaleraSecretControl) GetGaleraCreds(galera *apigalera.Galera) (ma
 
 	if credsMap["user"] == "" || credsMap["password"] == "" {
 		err = fmt.Errorf("user and/or password are not set in secret %s", galera.Spec.Pod.CredentialsSecret.Name)
+//	} else {
+//		gsc.logger.Infof("successfully loaded user and password from secret for galera %s/%s", galera.Namespace, galera.Name)
 	}
 
 	return credsMap, err

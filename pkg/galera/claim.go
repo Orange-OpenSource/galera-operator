@@ -16,6 +16,7 @@ package galera
 
 import (
 	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
+	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
@@ -36,7 +37,7 @@ func CreateGaleraClaim(galspec *apigalera.GaleraSpec, labels map[string]string, 
 }
 
 // CheckClaim returns true is the provided pvc is compliant with the pvc spec described in the Galera object
-func CheckClaim(galera *apigalera.Galera, claim *corev1.PersistentVolumeClaim) bool {
+func CheckClaim(galera *apigalera.Galera, claim *corev1.PersistentVolumeClaim, defaultSCname string) bool {
 	if !reflect.DeepEqual(galera.Spec.PersistentVolumeClaimSpec.AccessModes, claim.Spec.AccessModes) {
 		return false
 	}
@@ -50,25 +51,22 @@ func CheckClaim(galera *apigalera.Galera, claim *corev1.PersistentVolumeClaim) b
 	}
 
 	if !reflect.DeepEqual(galera.Spec.PersistentVolumeClaimSpec.StorageClassName, claim.Spec.StorageClassName) {
-		return false
-	}
-	/*
-	if *galera.Spec.PersistentVolumeClaimSpec.StorageClassName != *claim.Spec.StorageClassName {
-		return false
-	}
-	*/
-
-	if !reflect.DeepEqual(galera.Spec.PersistentVolumeClaimSpec.VolumeMode, claim.Spec.VolumeMode) {
-		// Value of Filesystem is implied when not included in claim spec.
-		if *claim.Spec.VolumeMode == corev1.PersistentVolumeFilesystem && galera.Spec.PersistentVolumeClaimSpec.VolumeMode == nil {
+		// Value of default storage class name is implied when not included in galera claim spec.
+		if galera.Spec.PersistentVolumeClaimSpec.StorageClassName == nil && *claim.Spec.StorageClassName == defaultSCname {
 		} else {
 			return false
 		}
 	}
-	/*
-	if *galera.Spec.PersistentVolumeClaimSpec.VolumeMode != *claim.Spec.VolumeMode {
-		return false
+
+	if !reflect.DeepEqual(galera.Spec.PersistentVolumeClaimSpec.VolumeMode, claim.Spec.VolumeMode) {
+		// Value of Filesystem is implied when not included in galera claim spec.
+		if galera.Spec.PersistentVolumeClaimSpec.VolumeMode == nil && *claim.Spec.VolumeMode == corev1.PersistentVolumeFilesystem {
+		} else {
+			return false
+		}
 	}
-	*/
+
+	logrus.Infof("SEB: ************************* check claim : ca matche")
+
 	return true
 }

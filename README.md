@@ -114,6 +114,8 @@ $ kubectl apply -f ./example-manifests/galera-backup/10-backup-secret.yaml
 $ kubectl apply -f ./example-manifests/galera-backup/20-galera-backup.yaml
 ```
 
+NOTE: change $YOURKEY, $YOURSECRET and $YOURENDPOINT to the credentials and url of your S3 solution.
+
 ### Restore Galera Cluster        
 
 Galera clusters can be restored (you need to specify the name of the gzip file) :
@@ -137,7 +139,7 @@ $ kubectl apply -f ./example-manifests/galera-monitoring/galera-monitor.yaml
 
 ## Building the operator
 
-Kubernetes version: 1.12+
+Kubernetes version: 1.13+
 
 This operator use the kubernetes code-generator for:
   * clientset: used to manipulate objects defined in the CRD (GaleraCluster)

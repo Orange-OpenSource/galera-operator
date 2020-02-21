@@ -52,6 +52,7 @@ func NewDefaultGaleraControl(
 	serviceControl GaleraServiceControlInterface,
 	podDBControl GaleraPodDisruptionBudgetControlInterface,
 	secretControl GaleraSecretControlInterface,
+	storageControl GaleraStorageControlInterface,
 	upgradeConfigControl GaleraUpgradeConfigControlInterface,
 	restoreControl GaleraRestoreControlInterface,
 	statusUpdater GaleraStatusUpdaterInterface,
@@ -66,6 +67,7 @@ func NewDefaultGaleraControl(
 		serviceControl,
 		podDBControl,
 		secretControl,
+		storageControl,
 		upgradeConfigControl,
 		restoreControl,
 		statusUpdater,
@@ -81,6 +83,7 @@ type defaultGaleraControl struct {
 	serviceControl    		GaleraServiceControlInterface
 	podDBControl      		GaleraPodDisruptionBudgetControlInterface
 	secretControl     		GaleraSecretControlInterface
+	storageControl			GaleraStorageControlInterface
 	upgradeConfigControl 	GaleraUpgradeConfigControlInterface
 	restoreControl    		GaleraRestoreControlInterface
 	statusUpdater     		GaleraStatusUpdaterInterface
@@ -119,6 +122,8 @@ func (gc *defaultGaleraControl) SyncGalera(galera *apigalera.Galera, pods []*cor
 
 	var status *apigalera.GaleraStatus
 
+	logrus.Infof("SEB: @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ generation %d", galera.Generation)
+
 	status, err = gc.syncGalera(currentGalera, nextGalera, currentRevision.Name, nextRevision.Name, collisionCount, pods, claims)
 	if err != nil {
 		return err
@@ -147,14 +152,20 @@ func (gc *defaultGaleraControl) SyncGalera(galera *apigalera.Galera, pods []*cor
 		return err
 	}
 
-	gc.logger.Infof("Galera %s/%s pod status replicas=%d ready=%s unready=%s phase=%s condition=%v",
+	var allConditions []string
+
+	for _, condition := range status.Conditions {
+		allConditions = append(allConditions, condition.Message)
+	}
+
+	gc.logger.Infof("Galera %s/%s pod status replicas=%d ready=%s unready=%s phase=%s condition=%s",
 		galera.Namespace,
 		galera.Name,
 		status.Replicas,
 		status.Members.Ready,
 		status.Members.Unready,
 		status.Phase,
-		status.Conditions)
+		allConditions)
 
 	gc.logger.Infof("Galera %s/%s revisions : current=%s with %d replicas, update=%s with %d replicas",
 		galera.Namespace,
@@ -300,7 +311,7 @@ func (gc *defaultGaleraControl) getGaleraRevisions(
 	return currentRevision, nextRevision, collisionCount, nil
 }
 
-// syncGalera performs the upgrade function for a Galera. This method creates, updates, and deletes Pods in
+// syncGalera performs the synchronize function for a Galera. This method creates, updates, and deletes Pods in
 // the galera in order to conform the system to the target state for the galera. The target state always contains
 // galera.Spec.Replicas Pods with a Ready Condition. If the returned error is nil, the returned GaleraStatus is valid and the
 // update must be recorded. If the error is not nil, the method should be retried until successful.
@@ -321,8 +332,9 @@ func (gc *defaultGaleraControl) syncGalera(
 	status.CollisionCount = new(int32)
 	*status.CollisionCount = collisionCount
 
-	// If the Galera is being deleted, don't do anything other than removing finalizer if set and upgrading status.
+	// If the Galera is being deleted, don't do anything
 	if currentGalera.DeletionTimestamp != nil {
+		// TODO : not working because galera is deleted before entering this loop
 		clustersDeleted.Inc()
 		clustersTotal.Dec()
 		return &status, nil
@@ -398,6 +410,8 @@ func (gc *defaultGaleraControl) syncGalera(
 		dataClaims, _ := splitClaim(claims)
 
 		if len(dataClaims) == 0 {
+			// TODO: if the galera operator fails during the go gc.restoreControl.HandleGaleraRestore, the
+			// cluster will be in this phase, perhaps we should try to restore it again
 			status.Phase = apigalera.GaleraPhaseFailed
 		}
 		if len(pods) == 0 {
@@ -432,7 +446,8 @@ func (gc *defaultGaleraControl) syncGalera(
 	return &status, nil
 }
 
-//
+// splitClaim returns two slices, the first slice contains data claim, one datacalaim is used by every pod,
+// the second slice contains backup claim that are only used by restore and backup pods
 func splitClaim(claims []*corev1.PersistentVolumeClaim) (dataClaims []*corev1.PersistentVolumeClaim, bkpClaims []*corev1.PersistentVolumeClaim) {
 	for _, claim := range claims {
 		_, isbkp := getClaimSuffixAndBackup(claim)
@@ -445,7 +460,7 @@ func splitClaim(claims []*corev1.PersistentVolumeClaim) (dataClaims []*corev1.Pe
 	return
 }
 
-//
+// runGalera performs the run for a Galera, ie a cluster is created. This method creates, updates and deletes Pods.
 func (gc *defaultGaleraControl) runGalera(
 	currentGalera *apigalera.Galera,
 	nextGalera *apigalera.Galera,
@@ -464,52 +479,54 @@ func (gc *defaultGaleraControl) runGalera(
 	var bkpSuffixes []string
 	var addPod *corev1.Pod
 
-	onePodTerminating := false
-	podTerminating := ""
-
 	// Delete pods that don't have theirs claims (data and backup)
 	for _, pod := range pods {
-		deletePod := true
-		podSuffix := getPodSuffix(pod)
 
-		if backup, exist := pod.Labels[apigalera.GaleraBackupLabel]; exist && backup == "true" {
-			// Don't delete backup pod is a data and a backup claims match
-			findData := false
-			findBackup := false
+		if isHealthy(pod) {
+			deletePod := true
+			podSuffix := getPodSuffix(pod)
 
-			for _, claim := range claims {
-				claimSuffix, isBackup := getClaimSuffixAndBackup(claim)
-				if claimSuffix == podSuffix {
-					if isBackup {
-						findBackup = true
-					} else {
-						findData = true
+			if backup, exist := pod.Labels[apigalera.GaleraBackupLabel]; exist && backup == "true" {
+				// Don't delete backup pod if a data and a backup claims match
+				findData := false
+				findBackup := false
+
+				for _, claim := range claims {
+					claimSuffix, isBackup := getClaimSuffixAndBackup(claim)
+					if claimSuffix == podSuffix {
+						if isBackup {
+							findBackup = true
+						} else {
+							findData = true
+						}
+					}
+				}
+
+				if findBackup && findData {
+					deletePod = false
+				}
+
+			} else {
+				// Don't delete pod, if a data claim is matching
+				for _, claim := range claims {
+					if podSuffix == getClaimSuffix(claim) {
+						deletePod = false
 					}
 				}
 			}
 
-			if findBackup && findData {
-				deletePod = false
-			}
-
-		} else {
-			// Don't delete pod, if a data claim is matching
-			for _, claim := range claims {
-				if podSuffix == getClaimSuffix(claim) {
-					deletePod = false
-				}
+			if deletePod {
+				gc.logger.Infof("deleting pod %s from galera %s/%s : no matching claims", pod.Name, currentGalera.Namespace, currentGalera.Name)
+				// make a deep copy so we don't mutate the shared cache
+				return gc.podControl.ForceDeletePod(currentGalera, pod.DeepCopy())
 			}
 		}
-
-		if deletePod {
-			gc.logger.Infof("deleting pod %s from galera %s/%s : no matching claims", pod.Name, currentGalera.Namespace, currentGalera.Name)
-			// make a deep copy so we don't mutate the shared cache
-			return gc.podControl.ForceDeletePod(currentGalera, pod.DeepCopy())
-		}
-
 	}
 
 	// Check pods and sort them between ready and unready pods
+	onePodTerminating := false
+	podTerminating := ""
+
 	for _, pod := range pods {
 		status.Replicas++
 		addPod = nil
@@ -576,7 +593,6 @@ func (gc *defaultGaleraControl) runGalera(
 					if status.Members.Backup == "" {
 						addPod = pod
 						status.Members.Backup = pod.Name
-						//bkpSuffixes = []string{getPodSuffix(pod)}
 						bkpSuffixes = append(bkpSuffixes, getPodSuffix(pod))
 					} else {
 						// make a deep copy so we don't mutate the shared cache
@@ -604,6 +620,12 @@ func (gc *defaultGaleraControl) runGalera(
 				}
 				if addPod != nil {
 					unreadyPods = append(unreadyPods, addPod)
+				}
+
+				// check if the pod a a backup
+				value, exist = pod.Labels[apigalera.GaleraBackupLabel]
+				if exist && value == "true" {
+					bkpSuffixes = append(bkpSuffixes, getPodSuffix(pod))
 				}
 			}
 		} else {
@@ -650,10 +672,27 @@ func (gc *defaultGaleraControl) runGalera(
 
 	// If at lest one pod is terminating, do not go further
 	if onePodTerminating {
-		gc.logger.Infof("galera %s/%s is waiting for Pod %s to Terminate", currentGalera.Namespace, currentGalera.Name, podTerminating)
+		gc.logger.Infof("galera %s/%s is waiting for Pod %s to terminate", currentGalera.Namespace, currentGalera.Name, podTerminating)
 		return nil
 	}
 
+	// If at lest one claim is terminating, do not go further
+	oneClaimTerminating := false
+	claimTerminating := ""
+
+	for _, claim := range claims {
+		if isClaimTerminating(claim) {
+			oneClaimTerminating = true
+			claimTerminating = claim.Name
+		}
+	}
+
+	if oneClaimTerminating {
+		gc.logger.Infof("galera %s/%s is waiting for Persistent Volume Claim %s to terminate ", currentGalera.Namespace, currentGalera.Name, claimTerminating)
+		return nil
+	}
+
+	// Check if a new galera image is going to be deployed
 	newImage := false
 	if currentGalera.Spec.Pod.Image != nextGalera.Spec.Pod.Image {
 		newImage = true
@@ -664,15 +703,23 @@ func (gc *defaultGaleraControl) runGalera(
 		return err
 	}
 
-	// Delete backup claim not mapped by a pod and return a suffixes' list of unused claims
-	unusedClaimSuffixes, err := gc.listDataAndDeleteBackupClaim(nextGalera, podSuffixes, bkpSuffixes, claims)
+	defaultSCName, err := gc.storageControl.GetNameDefaultStorageClass()
 	if err != nil {
+		return err
+	}
+
+	// Delete backup claim not mapped by a pod and return a suffixes' list of unused claims, if a claim was modified,
+	// stop processing galera for this round
+	unusedClaimSuffixes, op, err := gc.listDataAndDeleteUnusedClaims(nextGalera, podSuffixes, bkpSuffixes, claims, defaultSCName)
+	if err != nil || op == true {
 		return err
 	}
 
 	addresses := getBootstrapAddresses(readyPods)
 
-	if err := gc.checkMysqlUpgradeForReadyPods(nextGalera, readyPods, mapCredGalera); err != nil {
+	// Perform mysql_upgrade, if pod or claim are modified, stop processing galera for this round
+	op, err = gc.checkMysqlUpgrade(nextGalera, unreadyPods, mapCredGalera)
+	if err != nil || op == true {
 		return err
 	}
 
@@ -729,16 +776,17 @@ func (gc *defaultGaleraControl) runGalera(
 	}
 
 	// Managing the update by deleting a pod that does not match the update revision
-	return gc.deletePodForUpgrading(
+	return gc.deletePodForUpgrade(
 		nextGalera,
 		status,
 		readyPods,
 		currentRevision,
 		nextRevision,
-		mapCredGalera)
+		mapCredGalera,
+		defaultSCName)
 }
 
-//
+// scheduleGaleraRestore is the first part of restoring
 func (gc *defaultGaleraControl) scheduleGaleraRestore(
 	galera *apigalera.Galera,
 	status *apigalera.GaleraStatus,
@@ -749,7 +797,6 @@ func (gc *defaultGaleraControl) scheduleGaleraRestore(
 	var readyPods []*corev1.Pod
 	var unreadyPods []*corev1.Pod
 	var podSuffix []string
-	//var bkpSuffix []string
 
 	// Check pods and short them between ready and unready pods
 	for _, pod := range pods {
@@ -770,15 +817,19 @@ func (gc *defaultGaleraControl) scheduleGaleraRestore(
 		}
 
 		podSuffix = append(podSuffix, getPodSuffix(pod))
-		//bkpSuffix = append(bkpSuffix, getPodSuffix(pod))
 	}
 
 	status.Members.Ready, status.Members.Unready = getMembersName(readyPods, unreadyPods)
 
-	// Delete backup claim not mapped by a pod and return a suffixes' list of unused claims
-	//unusedClaimSuffixes, err := gc.listDataAndDeleteBackupClaim(galera, podSuffix, bkpSuffix, claims)
-	unusedClaimSuffixes, err := gc.listDataAndDeleteBackupClaim(galera, podSuffix, []string{}, claims)
+	defaultSCName, err := gc.storageControl.GetNameDefaultStorageClass()
 	if err != nil {
+		return err
+	}
+
+	// Delete backup claim not mapped by a pod and return a suffixes' list of unused claims
+	//unusedClaimSuffixes, err := gc.listDataAndDeleteUnusedClaims(galera, podSuffix, bkpSuffix, claims)
+	unusedClaimSuffixes, op, err := gc.listDataAndDeleteUnusedClaims(galera, podSuffix, []string{}, claims, defaultSCName)
+	if err != nil || op == true {
 		return err
 	}
 
@@ -808,7 +859,7 @@ func (gc *defaultGaleraControl) scheduleGaleraRestore(
 		mapCredGalera)
 }
 
-//
+// getMembersName returns two slices containning names of ready and unready pods
 func getMembersName(readyPods, unreadyPods []*corev1.Pod) (ready, unready []string) {
 	for _, pod := range readyPods {
 		ready = append(ready, pod.Name)
@@ -821,7 +872,7 @@ func getMembersName(readyPods, unreadyPods []*corev1.Pod) (ready, unready []stri
 	return
 }
 
-//
+// setLabels is used to patch labels carried by pods in order to match exposed services
 func (gc *defaultGaleraControl) setLabels(galera *apigalera.Galera,readyPods []*corev1.Pod, status *apigalera.GaleraStatus) error {
 	switch len(readyPods) {
 	case 0:
@@ -829,6 +880,7 @@ func (gc *defaultGaleraControl) setLabels(galera *apigalera.Galera,readyPods []*
 	case 1:
 		return gc.podControl.PatchPodLabels(galera, readyPods[0].DeepCopy(), apigalera.StateCluster, AddReader(), AddWriter())
 	case 2:
+		// Set at least a Writer
 		if status.Members.Writer == "" {
 			var backup *corev1.Pod
 
@@ -838,6 +890,7 @@ func (gc *defaultGaleraControl) setLabels(galera *apigalera.Galera,readyPods []*
 				}
 			}
 
+			// Chose the Writer that is different from the Backup (if Backup exists)
 			if backup == nil {
 				status.Members.Writer = readyPods[0].Name
 				if err := gc.podControl.PatchPodLabels(galera, readyPods[0].DeepCopy(), apigalera.StateCluster, RemoveReader(), AddWriter()); err != nil {
@@ -938,7 +991,7 @@ func (gc *defaultGaleraControl) setLabels(galera *apigalera.Galera,readyPods []*
 	return nil
 }
 
-//
+// setStatusPhaseAndConditions sets the Phase and Conditions of examined Galera Cluster
 func setStatusPhaseAndConditions(
 	galera *apigalera.Galera,
 	status *apigalera.GaleraStatus,
@@ -989,18 +1042,37 @@ func setStatusPhaseAndConditions(
 	return nil
 }
 
-// listDataAndDeleteBackupClaim return a list of unused data claims and delete all backup claims not mapping the backup or restore pod suffixes
-func (gc *defaultGaleraControl) listDataAndDeleteBackupClaim(
+// listDataAndDeleteUnusedClaims return a list of unused data claims and delete all backup claims not mapping
+// the backup or restore pod suffixes
+func (gc *defaultGaleraControl) listDataAndDeleteUnusedClaims(
 	galera *apigalera.Galera,
 	podSuffix []string,
 	backupSuffix []string,
-	claims []*corev1.PersistentVolumeClaim) (claimSuffix []string, err error) {
+	claims []*corev1.PersistentVolumeClaim,
+	defaultSCName string) (claimSuffix []string, operation bool, err error) {
+
+
+	logrus.Infof("SEB : ££££££££££££££££££££££ podsuffix : %s", podSuffix)
+	logrus.Infof("SEB : podsuffix : %s", backupSuffix)
+
+	operation = false
 
 	for _, claim := range claims {
+		// if claim is terminating, don't process it, stop this round
+		if isClaimTerminating(claim) {
+			operation = true
+			return
+		}
+
+		logrus.Infof("SEB: claim.Name : %s", claim.Name)
+
 		var exist bool
 		// get the suffix
 		suffix, backup := getClaimSuffixAndBackup(claim)
 		if backup == true {
+
+			logrus.Infof("SEB: backup true")
+
 			// if it is a backup not used by the backup or restore pods, delete the claim
 			exist = false
 			for _, s := range  backupSuffix {
@@ -1009,10 +1081,11 @@ func (gc *defaultGaleraControl) listDataAndDeleteBackupClaim(
 				}
 			}
 			if exist == false {
+				logrus.Infof("SEB: DELETE CLAIM 1070")
+
 				err = gc.podControl.DeleteClaim(galera, claim)
-				if err != nil {
-					return
-				}
+				operation = true
+				return
 			}
 		} else {
 			// check if the data claim is used by a pod
@@ -1023,9 +1096,12 @@ func (gc *defaultGaleraControl) listDataAndDeleteBackupClaim(
 				}
 			}
 			if exist == false {
-				// TODO : test if claim is terminating
-				if isClaimMatching(galera, claim) {
+				if isClaimMatching(galera, claim, defaultSCName) {
 					claimSuffix = append(claimSuffix, suffix)
+				} else {
+					err = gc.podControl.DeleteClaim(galera, claim)
+					operation = true
+					return
 				}
 			}
 		}
@@ -1034,30 +1110,61 @@ func (gc *defaultGaleraControl) listDataAndDeleteBackupClaim(
 }
 
 
-
-//
-func (gc *defaultGaleraControl) checkMysqlUpgradeForReadyPods(
+// checkMysqlUpgrade performs the mysql_upgrade for nodes being upgraded. Pods and Claims are labelled
+// with the revision, when an upgrade occurs (upgrading from n to m), pod n is deleted, pod m is started and claims
+// with the same name is attached. As the claim is labelled with version n, we run mysql_upgrade, after this, the
+// claim is patched with label m. If an operation on pod or claim is done, return true else return false.
+func (gc *defaultGaleraControl) checkMysqlUpgrade(
 	galera *apigalera.Galera,
-	readyPods []*corev1.Pod,
-	mapCredGalera map[string]string) error {
-	for	_, pod := range readyPods {
-		podRev := getPodRevision(pod)
-		_, claimRev, err := gc.podControl.GetClaimRevision(galera.Namespace, pod.Name)
-		if err != nil && podRev != claimRev {
-			if err := gc.podControl.RunUpgradeGalera(galera, pod, mapCredGalera["user"], mapCredGalera["password"]); err != nil {
-				return err
+	unreadyPods []*corev1.Pod,
+	mapCredGalera map[string]string) (bool, error) {
+	for	_, pod := range unreadyPods {
+		// Standalone pod is stored in unreadyPods slice
+		if isRunningAndReady(pod) {
+
+			podRev := getPodRevision(pod)
+
+			_, claimRev, err := gc.podControl.GetClaimRevision(galera.Namespace, pod.Name)
+			if err != nil {
+				return true, err
 			}
 
-			if err := gc.podControl.PatchClaimLabels(galera, pod, podRev); err != nil {
-				return err
+			logrus.Infof("+++++++++++++++++++++++++ iciciciciciccicicicicicicic podrev:=%s claimrev:=%s", podRev, claimRev)
+
+			if podRev != claimRev {
+				logrus.Infof("+++++++++++++++++++++++++ upgrade ")
+
+				pod = pod.DeepCopy()
+
+				if err := gc.podControl.RunUpgradeGalera(galera, pod, mapCredGalera["user"], mapCredGalera["password"]); err != nil {
+					return true, err
+				}
+
+				logrus.Infof("rev:%s", pod.Labels[apigalera.GaleraRevisionLabel])
+
+				// Need to delete pod first, if operator crashes, rerun mysql upgrade but do not let a pod in standalone state
+				logrus.Infof("+++++++++++++++++++++++++ delete pod ")
+				if err := gc.podControl.ForceDeletePod(galera, pod); err != nil {
+					return true, err
+				}
+
+				logrus.Infof("rev label:%s", claimRev)
+
+				logrus.Infof("+++++++++++++++++++++++++ patch claim ")
+
+				if err := gc.podControl.PatchClaimLabels(galera, pod, podRev); err != nil {
+					return true, err
+				}
+
+				return true, nil
 			}
 		}
 	}
 
-	return nil
+	return false, nil
 }
 
-//
+// checkUnreadyPodBeforeCreatingPod creates Pod if there is no unready pod
 func (gc *defaultGaleraControl) checkUnreadyPodBeforeCreatingPod(
 	galera *apigalera.Galera,
 	status *apigalera.GaleraStatus,
@@ -1073,7 +1180,7 @@ func (gc *defaultGaleraControl) checkUnreadyPodBeforeCreatingPod(
 
 	// Examine each unready replica
 	for i := range unreadyPods {
-		// Delete and recreate failed pods
+		// Delete failed pods
 		if isFailed(unreadyPods[i]) {
 			gc.recorder.Eventf(galera, corev1.EventTypeWarning, "RecreatingFailedPod",
 				"Galera %s/%s is recreating failed Pod %s",
@@ -1081,40 +1188,19 @@ func (gc *defaultGaleraControl) checkUnreadyPodBeforeCreatingPod(
 				galera.Name,
 				unreadyPods[i].Name)
 
-			if err := gc.podControl.ForceDeletePod(galera, unreadyPods[i]); err != nil {
-				return err
-			}
+			err := gc.podControl.ForceDeletePod(galera, unreadyPods[i])
 
-			if getPodRevision(unreadyPods[i]) != chosenRevision || role == apigalera.Restore {
-				state = apigalera.StateStandalone
-			}
-
-			pod := newGaleraPod(
-				galera,
-				chosenRevision,
-				unreadyPods[i].Name,
-				role,
-				state,
-				addresses,
-				gc.bootstrapImage,
-				gc.backupImage,
-				init,
-				mapCredGalera,
-			)
-			// Create the pod
-			if err := gc.podControl.CreatePodAndClaim(galera, pod, role); err != nil {
+			if err == nil {
 				if getPodRevision(unreadyPods[i]) == currentRevision {
 					status.CurrentReplicas--
 				}
 				if getPodRevision(unreadyPods[i]) == nextRevision {
 					status.NextReplicas--
 				}
-				return err
 			}
 
-			// pod created, no more work possible for this round as
-			// Galera does not allow bursting, return immediately
-			return nil
+			// pod deleted, no more work possible for this round
+			return err
 		}
 		// If we find a Pod that is currently terminating, we must wait until graceful deletion
 		// completes before we continue to make progress.
@@ -1126,6 +1212,9 @@ func (gc *defaultGaleraControl) checkUnreadyPodBeforeCreatingPod(
 				unreadyPods[i].Name)
 			return nil
 		}
+
+		// TODO: check if the pod is pending for too much time (5 minutes ?) and delete it
+
 		// If we have a Pod that has been created but is not running and ready we can not make progress.
 		if !isRunningAndReady(unreadyPods[i]) {
 			gc.logger.Infof(
@@ -1150,6 +1239,7 @@ func (gc *defaultGaleraControl) checkUnreadyPodBeforeCreatingPod(
 	} else {
 		if exist && rev != chosenRevision {
 			state = apigalera.StateStandalone
+			logrus.Infof("SEB: $$$$$$$$$$$$$$$$$$ STANDALONE")
 		}
 	}
 
@@ -1179,7 +1269,7 @@ func (gc *defaultGaleraControl) checkUnreadyPodBeforeCreatingPod(
 	return err
 }
 
-//
+// manageSpecialNode is a method in charge of Special node. This method creates and upgrades this kind of node.
 func (gc *defaultGaleraControl) manageSpecialNode(
 	galera *apigalera.Galera,
 	status *apigalera.GaleraStatus,
@@ -1191,6 +1281,9 @@ func (gc *defaultGaleraControl) manageSpecialNode(
 	claimSuffix []string,
 	mapCredGalera map[string]string,
 	upgrading bool) error {
+
+	return nil
+	// TODO : tout revoir
 
 	if specialPod == nil {
 		podRev:= currentRevision
@@ -1236,13 +1329,13 @@ func (gc *defaultGaleraControl) manageSpecialNode(
 					galera.Namespace,
 					galera.Name,
 					specialPod.Name)
-				err := gc.podControl.DeletePod(galera, specialPod, mapCredGalera["user"], mapCredGalera["password"])
+				err := gc.podControl.DeleteSyncedPod(galera, specialPod, mapCredGalera["user"], mapCredGalera["password"])
 				return err
 			}
 
 			// wait for unhealthy Pods on update
 			if !isHealthy(specialPod) {
-				gc.logger.Infof("Galera %s/%s is waiting for Special Pod %s to update",
+				gc.logger.Infof("Galera %s/%s is waiting for Special Pod %s to upgrade",
 					galera.Namespace,
 					galera.Name,
 					specialPod.Name)
@@ -1252,9 +1345,11 @@ func (gc *defaultGaleraControl) manageSpecialNode(
 			return nil
 		}
 	}
+
+
 }
 
-//
+// considerPodTermination deletes pods if there are too much pods deployed (if the galera cluster is scaling down)
 func (gc *defaultGaleraControl) considerPodTermination(
 	galera *apigalera.Galera,
 	status *apigalera.GaleraStatus,
@@ -1275,9 +1370,7 @@ func (gc *defaultGaleraControl) considerPodTermination(
 			}
 		}
 		if clear == true {
-			if err := gc.podControl.DeleteClaim(galera, claim); err != nil {
-				return err
-			}
+			return gc.podControl.DeleteClaim(galera, claim)
 		}
 	}
 
@@ -1300,7 +1393,7 @@ func (gc *defaultGaleraControl) considerPodTermination(
 			if exist {
 				continue
 			}
-			if err := gc.podControl.DeletePod(galera, pod, mapCredGalera["user"], mapCredGalera["password"]); err != nil {
+			if err := gc.podControl.DeleteSyncedPod(galera, pod, mapCredGalera["user"], mapCredGalera["password"]); err != nil {
 				return err
 			}
 			if getPodRevision(pod) == currentRevision {
@@ -1316,42 +1409,45 @@ func (gc *defaultGaleraControl) considerPodTermination(
 	return nil
 }
 
-//
-func (gc *defaultGaleraControl) deletePodForUpgrading(
+// deletePodForUpgrade deletes a pod if the all nodes of the cluster are running and if an upgrade is needed
+func (gc *defaultGaleraControl) deletePodForUpgrade(
 	galera *apigalera.Galera,
 	status *apigalera.GaleraStatus,
 	pods []*corev1.Pod,
 	currentRevision string,
 	nextRevision string,
-	mapCredGalera map[string]string) error {
+	mapCredGalera map[string]string,
+	defaultSCName string) error {
 
+		/*
 	if currentRevision == nextRevision {
 		return nil
 	}
+		*/
 
 	for	_, pod := range pods {
+		// wait for unhealthy Pods on upgrade
+		if !isHealthy(pod) {
+			gc.logger.Infof("Galera %s/%s is waiting for Pod %s to upgrade",
+				galera.Namespace,
+				galera.Name,
+				pod.Name)
+			return nil
+		}
+
 		// delete the pod if it not already terminating and does not match the next revision
 		if getPodRevision(pod) != nextRevision && !isTerminating(pod) {
 			if !status.IsUpgrading() {
 				status.SetUpgradingCondition(nextRevision)
 				clustersModified.Inc()
 			}
-			gc.logger.Infof("Galera %s/%s terminating Pod %s for update",
+			gc.logger.Infof("Galera %s/%s terminating Pod %s for upgrade",
 				galera.Namespace,
 				galera.Name,
 				pod.Name)
-			err := gc.podControl.DeletePodForUpgrade(galera, pod, mapCredGalera["user"], mapCredGalera["password"])
+			err := gc.podControl.DeleteSyncedPodForUpgrade(galera, pod, mapCredGalera["user"], mapCredGalera["password"], defaultSCName)
 			status.CurrentReplicas--
 			return err
-		}
-
-		// wait for unhealthy Pods on update
-		if !isHealthy(pod) {
-			gc.logger.Infof("Galera %s/%s is waiting for Pod %s to update",
-				galera.Namespace,
-				galera.Name,
-				pod.Name)
-			return nil
 		}
 	}
 

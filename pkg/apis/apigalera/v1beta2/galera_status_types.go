@@ -33,7 +33,7 @@ const (
 	GaleraPhaseNone GaleraPhase = ""
 	// used for Galera Cluster that are currently running
 	GaleraPhaseRunning GaleraPhase = "Running"
-	// used for Galera Cluster that are currently running _ backuping
+	// used for Galera Cluster that are currently running & backuping
 	GaleraPhaseBackuping GaleraPhase = "Running&Backuping"
 	// used for Galera Cluster that are currently creating
 	GaleraPhaseCreating GaleraPhase = "Creating"

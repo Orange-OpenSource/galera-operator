@@ -18,7 +18,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"galera-operator/pkg/chaos"
 	clientset "galera-operator/pkg/client/clientset/versioned"
 	informers "galera-operator/pkg/client/informers/externalversions"
 	"galera-operator/pkg/controllers/backup"
@@ -29,9 +28,7 @@ import (
 	"galera-operator/pkg/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/time/rate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -50,7 +47,6 @@ var (
 	bootstrapImage string
 	backupImage    string
 	upgradeConfig  string
-	chaosLevel     int
 	resyncPeriod   int
 	runThread      int
 	backupThread   int
@@ -59,8 +55,6 @@ var (
 
 func init() {
 	flag.StringVar(&listenAddr, "listen-address", constants.ListenAddress, "The galera-operator address on which the metrics and readiness probe HTTP server will listen to")
-	// chaos level will be removed once we have a formal tool to inject failures.
-	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the galera clusters created by the operator")
 	flag.BoolVar(&clusterWide, "cluster-wide", false, "Enable operator to watch clusters in all namespaces")
 	flag.IntVar(&resyncPeriod, "resync", constants.ResyncPeriod, "Resync period time between calls to controllers")
 	flag.IntVar(&runThread,"run-thread", constants.RunThread, "Specify the number of thread for the run controller" )
@@ -69,43 +63,6 @@ func init() {
 	flag.StringVar(&backupImage, "backup", constants.BackupImage, "Container image used to backup/restore galera clusters (it is not the galera image)")
 	flag.StringVar(&upgradeConfig, "config-map", constants.UpgradeConfig, "Upgrade Config plan, empty string for no control")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
-}
-
-func startChaos(ctx context.Context, kubecli kubernetes.Interface, ns string, chaosLevel int) {
-	m := chaos.NewMonkeys(kubecli)
-	ls := labels.SelectorFromSet(map[string]string{"app": "etcd"})
-
-	switch chaosLevel {
-	case 1:
-		logrus.Info("chaos level = 1: randomly kill one galera pod every 30 seconds at 50%")
-		c := &chaos.CrashConfig{
-			Namespace: ns,
-			Selector:  ls,
-
-			KillRate:        rate.Every(30 * time.Second),
-			KillProbability: 0.5,
-			KillMax:         1,
-		}
-		go func() {
-			time.Sleep(60 * time.Second) // don't start until quorum up
-			m.CrushPods(ctx, c)
-		}()
-
-	case 2:
-		logrus.Info("chaos level = 2: randomly kill at most five galera pods every 30 seconds at 50%")
-		c := &chaos.CrashConfig{
-			Namespace: ns,
-			Selector:  ls,
-
-			KillRate:        rate.Every(30 * time.Second),
-			KillProbability: 0.5,
-			KillMax:         5,
-		}
-
-		go m.CrushPods(ctx, c)
-
-	default:
-	}
 }
 
 func main() {
@@ -161,8 +118,6 @@ func main() {
 		logrus.Fatalf("Error building galera clientset: %s", err.Error())
 	}
 
-	startChaos(context.Background(), kubeClient, namespace, chaosLevel)
-
 	// ClusterWide or namespaced operator
 	var operatedNamespace string
 	if clusterWide == true {
@@ -189,6 +144,7 @@ func main() {
 		kubeInformerFactory.Core().V1().Pods(),
 		kubeInformerFactory.Core().V1().Services(),
 		kubeInformerFactory.Core().V1().PersistentVolumeClaims(),
+		kubeInformerFactory.Storage().V1().StorageClasses(),
 		kubeInformerFactory.Apps().V1().ControllerRevisions(),
 		kubeInformerFactory.Policy().V1beta1().PodDisruptionBudgets(),
 		kubeInformerFactory.Core().V1().Secrets(),

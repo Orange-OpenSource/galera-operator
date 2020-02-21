@@ -16,8 +16,8 @@ spec:
   pod:
     credentialsSecret:
       name: galera-secret
-#    image: sebs42/mariadb:10.3.12-bionic
     image: sebs42/mariadb:10.4.2-bionic
+#    image: sebs42/mariadb:10.4.12-bionic
     mycnfConfigMap:
       name: galeraconf
     resources:

@@ -43,27 +43,30 @@ type GaleraPodControlInterface interface {
 	// CreatePodAndClaim create a pod in a galera. Any claims necessary for the pod are created prior to creating
 	// the pod. If the returned error is nil the pod and its claims have been created.
 	CreatePodAndClaim(galera *apigalera.Galera, pod *corev1.Pod, role string) error
-	// TODO : comment
+	// PatchPodLabels patchs a pod, used for services mapping and upgrade.
 	PatchPodLabels(galera *apigalera.Galera, pod *corev1.Pod, state string, actions ...PatchAction) error
-	// TODO: comment
+	// PatchClaimLabels patchs data claim, it is used in the process of upgrading a node.
 	PatchClaimLabels(galera *apigalera.Galera, pod *corev1.Pod, revision string) error
-	// DeletePod deletes a pod in a galera if this galera cluster node, ie this pod, is "Synced", ie there is no data not
+	// DeleteSyncedPod deletes a pod in a galera if this galera cluster node, ie this pod, is "Synced", ie there is no data not
 	// only present on this node. The pod's claims are not deleted. If the delete is successful, the returned error is nil.
-	DeletePod(galera *apigalera.Galera, pod *corev1.Pod, user, password string) error
-	// TODO: comment
-	DeletePodForUpgrade(galera *apigalera.Galera, pod *corev1.Pod, user, password string) error
+	DeleteSyncedPod(galera *apigalera.Galera, pod *corev1.Pod, user, password string) error
+	// DeletePodForUpgrade delete only the pod (not claim(s)) only if the galera container running in the pod is "synced",
+	// it means that datas on this galera node are replicated on at least an other node.
+	DeleteSyncedPodForUpgrade(galera *apigalera.Galera, pod *corev1.Pod, user, password, defaultSCName string) error
 	// ForceDeletePod deletes a pod in a galera without any check. The pod's claims are not deleted. If the delete is
 	// successful, the returned error is nil.
 	ForceDeletePod(galera *apigalera.Galera, pod *corev1.Pod) error
-	// TODO: comment
+	// ForceDeletePodAndClaim deletes a pod and its claims without any check. If the delete is
+	// successful, the returned error is nil.
 	ForceDeletePodAndClaim(galera *apigalera.Galera, pod *corev1.Pod) error
-	// TODO: comment
+	// DeleteClaim deletes the specified claim, it can delete data or backup claim.
 	DeleteClaim(galera *apigalera.Galera, claim *corev1.PersistentVolumeClaim) error
-	// TODO: comment
+	// GetClaimRevision returns the revision of the data claim. An error is returned if the claim does not exist.
 	GetClaimRevision(namespace, podName string) (bool, string, error)
 	// RunUpgradeGalera runs a mysql_upgrade on previously upgraded pod
 	RunUpgradeGalera(galera *apigalera.Galera, pod *corev1.Pod, user, password string) error
-	// TODO: comment
+	// IsPrimary returns true if the galera container galera status is equal to primary, it means the node is up-to-date
+	// in the galera cluster point of view
 	IsPrimary(galera *apigalera.Galera, pod *corev1.Pod, user, password string) (error, bool)
 }
 
@@ -92,21 +95,26 @@ type realGaleraPodControl struct {
 func (gpc *realGaleraPodControl) CreatePodAndClaim(galera *apigalera.Galera, pod *corev1.Pod, role string) error {
 	// Create the pod's claims prior to creating the Pod
 	if err := gpc.createPersistentVolumeClaim(galera, pod); err != nil {
-		gpc.recordPodEvent("create", galera, pod, err)
+		gpc.recordClaimEvent("create", galera, getPersistentVolumeClaim(galera, pod), err)
 		return err
 	}
 
 	if role == apigalera.Backup {
+		logrus.Infof("SEB : ________________________________________ creating backup claim")
+
 		if err := gpc.createBackupPersistentVolumeClaim(galera, pod); err != nil {
-			gpc.recordPodEvent("create", galera, pod, err)
+			gpc.recordClaimEvent("create", galera, getBackupPersistentVolumeClaim(galera, pod), err)
 			return err
 		}
+
+		logrus.Infof("SEB : ________________________________________ pas d'erreur dans le creating backup claim")
 	}
 
 	// If we created the claims, attempt to create the pod
 	_, err := gpc.client.CoreV1().Pods(galera.Namespace).Create(pod)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
+		logrus.Infof("SEB: /////////////////////////////////////////////////////// ")
 		return err
 	}
 	gpc.recordPodEvent("create", galera, pod, err)
@@ -231,12 +239,12 @@ func (gpc *realGaleraPodControl) PatchClaimLabels(galera *apigalera.Galera, pod 
 	return err
 }
 
-func (gpc *realGaleraPodControl) DeletePod(galera *apigalera.Galera, pod *corev1.Pod, user, password string) error {
+func (gpc *realGaleraPodControl) DeleteSyncedPod(galera *apigalera.Galera, pod *corev1.Pod, user, password string) error {
 	funcDeletePod := func() error { return gpc.client.CoreV1().Pods(galera.Namespace).Delete(pod.Name, nil) }
 	return gpc.deleteSynced(galera, pod, user, password, funcDeletePod)
 }
 
-func (gpc *realGaleraPodControl) DeletePodForUpgrade(galera *apigalera.Galera, pod *corev1.Pod, user, password string) error {
+func (gpc *realGaleraPodControl) DeleteSyncedPodForUpgrade(galera *apigalera.Galera, pod *corev1.Pod, user, password, defaultSCName string) error {
 	funcDeleteForUpdatePodAndClaims := func() error {
 		role, exist := pod.Labels[apigalera.GaleraBackupLabel]
 		if exist {
@@ -247,7 +255,7 @@ func (gpc *realGaleraPodControl) DeletePodForUpgrade(galera *apigalera.Galera, p
 					return err
 				}
 				// check backup claim
-				if !pkggalera.CheckClaim(galera, bkpClaim) {
+				if !isClaimMatching(galera, bkpClaim, defaultSCName) {
 					// delete backup claim
 					err = gpc.DeleteClaim(galera, bkpClaim)
 					gpc.recordClaimEvent("delete", galera, bkpClaim, err)
@@ -263,8 +271,9 @@ func (gpc *realGaleraPodControl) DeletePodForUpgrade(galera *apigalera.Galera, p
 		if err != nil {
 			return err
 		}
+
 		// check data claim
-		if !pkggalera.CheckClaim(galera, claim) {
+		if !isClaimMatching(galera, claim, defaultSCName) {
 			// delete data claim
 			err = gpc.DeleteClaim(galera, claim)
 			gpc.recordClaimEvent("delete", galera, claim, err)
@@ -369,7 +378,7 @@ func (gpc *realGaleraPodControl) GetClaimRevision(namespace, podName string) (bo
 	return true, getClaimRevision(claim), nil
 }
 
-var isOK = regexp.MustCompile("(?s)^(.*)BITE$")
+var isKO = regexp.MustCompile("(?s)^(.*)KO$")
 
 func (gpc *realGaleraPodControl) RunUpgradeGalera(galera *apigalera.Galera, pod *corev1.Pod, user, password string) error {
 	// build the complete command
@@ -380,11 +389,11 @@ func (gpc *realGaleraPodControl) RunUpgradeGalera(galera *apigalera.Galera, pod 
 	stdout, stderr, err := exec.ExecCmd(gpc.client, gpc.config, galera.Namespace, pod, cmd)
 
 	if err != nil {
-		gpc.logger.Infof("error (%e) executing mysql_upgrade command : %s", err, stderr)
+		gpc.logger.Infof("error (%e) executing mysql_upgrade command on galera pod (%s/%s) : %s", err, pod.Namespace, pod.Name, stderr)
 	}
 
-	if !isOK.Match([]byte(stdout)) {
-		err = errors.New(fmt.Sprintf("mysql_upgrade on galera pod (%s/%s) is not successful", pod.Namespace, pod.Name))
+	if isKO.Match([]byte(stdout)) {
+		err = errors.New(fmt.Sprintf("mysql_upgrade on galera pod (%s/%s) is not successful : %s", pod.Namespace, pod.Name, stdout))
 	}
 
 	gpc.recordPodEvent("mysqlUpgrade", galera, pod, err)
@@ -461,12 +470,19 @@ func (gpc *realGaleraPodControl) recordClaimEvent(verb string, galera *apigalera
 // Galera's Spec.
 func (gpc *realGaleraPodControl) createPersistentVolumeClaim(galera *apigalera.Galera, pod *corev1.Pod) error {
 	claim := getPersistentVolumeClaim(galera, pod)
-	_, err := gpc.claimLister.PersistentVolumeClaims(claim.Namespace).Get(claim.Name)
+	existingClaim, err := gpc.claimLister.PersistentVolumeClaims(claim.Namespace).Get(claim.Name)
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gpc.logger.Infof("Creating a new persistent volume claim %s for cluster %s/%s", claim.Name, galera.Namespace, galera.Name)
 		_, err = gpc.client.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(claim)
 		gpc.recordClaimEvent("create", galera, claim, err)
+	} else {
+		// If the resource is terminating, we return an error
+		if err == nil {
+			if existingClaim.DeletionTimestamp != nil {
+				err = errors.New(fmt.Sprintf("Persistent Volume Claim %s/%s is terminating", galera.Namespace, claim.Name))
+			}
+		}
 	}
 
 	return err
@@ -478,12 +494,19 @@ func (gpc *realGaleraPodControl) createPersistentVolumeClaim(galera *apigalera.G
 // Galera's Spec.
 func (gpc *realGaleraPodControl) createBackupPersistentVolumeClaim(galera *apigalera.Galera, pod *corev1.Pod) error {
 	claim := getBackupPersistentVolumeClaim(galera, pod)
-	_, err := gpc.claimLister.PersistentVolumeClaims(claim.Namespace).Get(claim.Name)
+	existingClaim, err := gpc.claimLister.PersistentVolumeClaims(claim.Namespace).Get(claim.Name)
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gpc.logger.Infof("Creating a new persistent volume claim %s for cluster %s/%s", claim.Name, galera.Namespace, galera.Name)
 		_, err = gpc.client.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(claim)
 		gpc.recordClaimEvent("create", galera, claim, err)
+	} else {
+		// If the resource is terminating, we return an error
+		if err == nil {
+			if existingClaim.DeletionTimestamp != nil {
+				err = errors.New(fmt.Sprintf("Backup Persistent Volume Claim %s/%s is terminating", galera.Namespace, claim.Name))
+			}
+		}
 	}
 
 	return err
