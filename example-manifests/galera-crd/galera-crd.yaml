@@ -94,8 +94,13 @@ spec:
                   type: object
             persistentVolumeClaimSpec:
               type: object
-            restore:
-              type: object
+#            restore:
+#              type: object
+#              properties:
+#                name:
+#                  type: string
+#                storageProviderType:
+#                  type: string
             revisionHistoryLimit:
               type: integer
               format: int32

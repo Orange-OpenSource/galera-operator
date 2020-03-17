@@ -16,7 +16,6 @@ package cluster
 
 import (
 	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
-	pkggalera "galera-operator/pkg/galera"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clientset "k8s.io/client-go/kubernetes"
@@ -57,7 +56,7 @@ func (gpc *realGaleraPodDisruptionBudgetControl) CreateOrUpdateGaleraPDB(galera 
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gpc.logger.Infof("Creating a new PodDisruptionBudget for cluster %s called %s", galera.Name, pdbName)
-		pdb = pkggalera.NewGaleraPodDisruptionBudget(&galera.Spec, galera.Labels, galera.Name, galera.Namespace, pdbName, 1, galera.AsOwner())
+		pdb = newGaleraPodDisruptionBudget(galera)
 		_, err = gpc.client.PolicyV1beta1().PodDisruptionBudgets(galera.Namespace).Create(pdb)
 	}
 	return pdbName, err

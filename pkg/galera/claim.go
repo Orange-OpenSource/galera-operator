@@ -16,7 +16,6 @@ package galera
 
 import (
 	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
-	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
@@ -65,8 +64,6 @@ func CheckClaim(galera *apigalera.Galera, claim *corev1.PersistentVolumeClaim, d
 			return false
 		}
 	}
-
-	logrus.Infof("SEB: ************************* check claim : ca matche")
 
 	return true
 }

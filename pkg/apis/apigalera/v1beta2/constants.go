@@ -51,7 +51,6 @@ const (
 	GaleraStateLabel    = "galera.v1beta2.sql.databases/state"
 	StateCluster        = "cluster"
 	StateStandalone     = "standalone"
-//	GaleraPodNameLabel  = "galera.v1beta2.sql.databases/pod-name"
 
 	GaleraRoleLabel     = "galera.v1beta2.sql.databases/role"
 	GaleraBackupLabel   = "galera.v1beta2.sql.databases/backup"

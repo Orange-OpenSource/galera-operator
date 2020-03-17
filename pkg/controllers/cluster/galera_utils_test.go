@@ -16,25 +16,28 @@ package cluster
 
 import (
 	"fmt"
-	"galera-operator/pkg/utils/constants"
-	"reflect"
-	"testing"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
+	"galera-operator/pkg/utils/constants"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	//	"k8s.io/kubernetes/pkg/controller/history"
+	//	"reflect"
+	"testing"
+	//	"k8s.io/apimachinery/pkg/runtime"
+	//	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	//	sqlv1beta2 "galera-operator/pkg/apis/apigalera/v1beta2"
 )
 
 func TestGetParentNameAndSuffix(t *testing.T) {
-	name := "test"
+	name := "test-gal"
+	revision := "59889f974c"
 	creds := newSecretForGalera(name)
 	config := newConfigMapForGalera(name)
 
-
 	galera := newGalera(name, creds.Name, config.Name,3)
-
-//	mapCredGalera, err := gc.secretControl.GetGaleraCreds(currentGalera)
 
 	credsMap := make(map[string]string, len(creds.Data))
 	for k, v := range creds.Data {
@@ -43,8 +46,8 @@ func TestGetParentNameAndSuffix(t *testing.T) {
 
 	pod := newGaleraPod(
 		galera,
-		"revision",
-		"toto",
+		revision,
+		createUniquePodName(galera.Name, []string{}, []string{}),
 		apigalera.RoleWriter,
 		apigalera.StateCluster,
 		"",
@@ -54,54 +57,297 @@ func TestGetParentNameAndSuffix(t *testing.T) {
 		credsMap,
 	)
 
+	if parent, suffix := getPodParentNameAndSuffix(pod); parent != galera.Name {
+		t.Errorf("Extracted the wrong parent name, expected %s found %s", galera.Name, parent)
+	} else if len(suffix) != 5 {
+		t.Errorf("Extracted the wrong suffix size, expected 5 found %d", len(suffix))
+	}
 
-}
+	pod.Name = "foo-$&$&é"
+	if parent := getPodParentName(pod); parent != "" {
+		t.Errorf("Expected empty string for non-member Pod parent")
+	}
 
-func TestGetClaimParentNameAndSuffix(t *testing.T) {
-
-}
-
-func TestCreateUniquePodName(t *testing.T) {
-	clusterName := "test"
-	existing := []string{"foo", "bar"}
-	available := []string{}
-
+	if suffix := getPodSuffix(pod); suffix != "" {
+		t.Errorf("Expected empty string for non-member Pod suffix")
+	}
 }
 
 func TestIsPodMemberOf(t *testing.T) {
+	name := "test-gal"
+	revision := "59889f974c"
+	creds := newSecretForGalera(name)
+	config := newConfigMapForGalera(name)
 
+	galera := newGalera(name, creds.Name, config.Name,3)
+	galera2 := newGalera(name, creds.Name, config.Name,3)
+	galera2.Name = "fake"
+
+	credsMap := make(map[string]string, len(creds.Data))
+	for k, v := range creds.Data {
+		credsMap[k] = string(v)
+	}
+
+	pod := newGaleraPod(
+		galera,
+		revision,
+		createUniquePodName(galera.Name, []string{}, []string{}),
+		apigalera.RoleWriter,
+		apigalera.StateCluster,
+		"",
+		constants.BootstrapImage,
+		constants.BackupImage,
+		true,
+		credsMap,
+	)
+
+	if !isPodMemberOf(galera, pod) {
+		t.Errorf("isPodMemberOf returned false negative")
+	}
+	if isPodMemberOf(galera2, pod) {
+		t.Errorf("isPodMemberOf returned false positive")
+	}
 }
 
 func TestIsClaimMemberOf(t *testing.T) {
+	name := "test-gal"
+	revision := "59889f974c"
+	creds := newSecretForGalera(name)
+	config := newConfigMapForGalera(name)
 
-}
+	galera := newGalera(name, creds.Name, config.Name,3)
+	galera2 := newGalera(name, creds.Name, config.Name,3)
+	galera2.Name = "fake"
 
-func TestGetBootstrapAddresses(t *testing.T) {
+	credsMap := make(map[string]string, len(creds.Data))
+	for k, v := range creds.Data {
+		credsMap[k] = string(v)
+	}
 
+	pod := newGaleraPod(
+		galera,
+		revision,
+		createUniquePodName(galera.Name, []string{}, []string{}),
+		apigalera.RoleWriter,
+		apigalera.StateCluster,
+		"",
+		constants.BootstrapImage,
+		constants.BackupImage,
+		true,
+		credsMap,
+	)
+
+	claim := getPersistentVolumeClaim(galera, pod)
+
+	if !isClaimMemberOf(galera, claim) {
+		t.Errorf("isClaimMemberOf returned false negative")
+	}
+	if isClaimMemberOf(galera2, claim) {
+		t.Errorf("isClaimMemberOf returned false positive")
+	}
 }
 
 func TestIsRunningAndReady(t *testing.T) {
+	name := "test-gal"
+	revision := "59889f974c"
+	creds := newSecretForGalera(name)
+	config := newConfigMapForGalera(name)
 
+	galera := newGalera(name, creds.Name, config.Name,3)
+
+	credsMap := make(map[string]string, len(creds.Data))
+	for k, v := range creds.Data {
+		credsMap[k] = string(v)
+	}
+
+	pod := newGaleraPod(
+		galera,
+		revision,
+		createUniquePodName(galera.Name, []string{}, []string{}),
+		apigalera.RoleWriter,
+		apigalera.StateCluster,
+		"",
+		constants.BootstrapImage,
+		constants.BackupImage,
+		true,
+		credsMap,
+	)
+
+	state := corev1.ContainerState{Terminated: nil}
+	cs := corev1.ContainerStatus{State: state}
+	pod.Status.ContainerStatuses = []corev1.ContainerStatus{cs}
+
+	if isRunningAndReady(pod) {
+		t.Errorf("isRunningAndReady does not respect Pod phase")
+	}
+	pod.Status.Phase = corev1.PodRunning
+	if isRunningAndReady(pod) {
+		t.Errorf("isRunningAndReady does not respect Pod condition")
+	}
+	condition := corev1.PodCondition{Type: corev1.PodReady, Status: corev1.ConditionTrue}
+	podutil.UpdatePodCondition(&pod.Status, &condition)
+	if !isRunningAndReady(pod) {
+		t.Errorf("Pod should be running and ready")
+	}
+
+	cst := corev1.ContainerStateTerminated{
+		ExitCode: 1,
+		Signal: 1,
+		Reason: "testing",
+		Message: "testing a terminating container",
+	}
+	state = corev1.ContainerState{Terminated: &cst}
+	cs = corev1.ContainerStatus{State: state}
+	pod.Status.ContainerStatuses = []corev1.ContainerStatus{cs}
+
+	if isRunningAndReady(pod) {
+		t.Errorf("Pod should not be running and ready")
+	}
 }
 
 func TestNewPodControllerRef(t *testing.T) {
+	name := "test-gal"
+	revision := "59889f974c"
+	creds := newSecretForGalera(name)
+	config := newConfigMapForGalera(name)
 
+	galera := newGalera(name, creds.Name, config.Name,3)
+
+	credsMap := make(map[string]string, len(creds.Data))
+	for k, v := range creds.Data {
+		credsMap[k] = string(v)
+	}
+
+	pod := newGaleraPod(
+		galera,
+		revision,
+		createUniquePodName(galera.Name, []string{}, []string{}),
+		apigalera.RoleWriter,
+		apigalera.StateCluster,
+		"",
+		constants.BootstrapImage,
+		constants.BackupImage,
+		true,
+		credsMap,
+	)
+
+	controllerRef := metav1.GetControllerOf(pod)
+	if controllerRef == nil {
+		t.Fatalf("No ControllerRef found on new pod")
+	}
+	if got, want := controllerRef.APIVersion, apigalera.SchemeGroupVersion.String(); got != want {
+		t.Errorf("controllerRef.APIVersion = %q, want %q", got, want)
+	}
+	if got, want := controllerRef.Kind, "Galera"; got != want {
+		t.Errorf("controllerRef.Kind = %q, want %q", got, want)
+	}
+	if got, want := controllerRef.Name, galera.Name; got != want {
+		t.Errorf("controllerRef.Name = %q, want %q", got, want)
+	}
+	if got, want := controllerRef.UID, galera.UID; got != want {
+		t.Errorf("controllerRef.UID = %q, want %q", got, want)
+	}
+	if got, want := *controllerRef.Controller, true; got != want {
+		t.Errorf("controllerRef.Controller = %v, want %v", got, want)
+	}
 }
 
+/*
 func TestCreateApplyRevision(t *testing.T) {
+	name := "test-gal"
+	creds := newSecretForGalera(name)
+	config := newConfigMapForGalera(name)
 
+	galera := newGalera(name, creds.Name, config.Name,3)
+
+	var localSchemeBuilder = runtime.SchemeBuilder{
+		sqlv1beta2.AddToScheme,
+	}
+	Scheme := runtime.NewScheme()
+	AddToScheme := localSchemeBuilder.AddToScheme
+
+	utilruntime.Must(AddToScheme(Scheme))
+
+	galera.Status.CollisionCount = new(int32)
+	revision, err := newRevision(galera, 1, galera.Status.CollisionCount)
+	if err != nil {
+		t.Errorf("ici")
+		t.Fatal(err)
+	}
+	galera.Spec.Pod.Image = "newimage:lastest"
+	if galera.Annotations == nil {
+		galera.Annotations = make(map[string]string)
+	}
+	key := "foo"
+	expectedValue := "bar"
+	galera.Annotations[key] = expectedValue
+	restoredSet, err := ApplyRevision(galera, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restoredRevision, err := newRevision(restoredSet, 2, restoredSet.Status.CollisionCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !history.EqualRevision(revision, restoredRevision) {
+		t.Errorf("wanted %v got %v", string(revision.Data.Raw), string(restoredRevision.Data.Raw))
+	}
+	value, ok := restoredRevision.Annotations[key]
+	if !ok {
+		t.Errorf("missing annotation %s", key)
+	}
+	if value != expectedValue {
+		t.Errorf("for annotation %s wanted %s got %s", key, expectedValue, value)
+	}
 }
+*/
 
+/*
 func TestRollingUpdateApplyRevision(t *testing.T) {
+	name := "test-gal"
+	creds := newSecretForGalera(name)
+	config := newConfigMapForGalera(name)
 
+	galera := newGalera(name, creds.Name, config.Name,3)
+	galera.Status.CollisionCount = new(int32)
+	currentSet := galera.DeepCopy()
+	currentRevision, err := newRevision(galera, 1, galera.Status.CollisionCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//set.Spec.Template.Spec.Containers[0].Env = []v1.EnvVar{{Name: "foo", Value: "bar"}}
+	galera.Spec.Pod.Env = []corev1.EnvVar{{Name: "foo", Value: "bar"}}
+	updateSet := galera.DeepCopy()
+	updateRevision, err := newRevision(galera, 2, galera.Status.CollisionCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	restoredCurrentSet, err := ApplyRevision(galera, currentRevision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(currentSet.Spec.Pod, restoredCurrentSet.Spec.Pod) {
+		t.Errorf("want %v got %v", currentSet.Spec.Pod, restoredCurrentSet.Spec.Pod)
+	}
+
+	restoredUpdateSet, err := ApplyRevision(galera, updateRevision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(updateSet.Spec.Pod, restoredUpdateSet.Spec.Pod) {
+		t.Errorf("want %v got %v", updateSet.Spec.Pod, restoredUpdateSet.Spec.Pod)
+	}
 }
+*/
 
 func TestGetPersistentVolumeClaims(t *testing.T) {
 
 }
 
 func newSecretForGalera(name string) *corev1.Secret {
-	strData := map[string]string{"user":"root", "password":"test"}
+//	strData := map[string]string{"user":"root", "password":"test"}
 
 	return &corev1.Secret{
 		TypeMeta:   metav1.TypeMeta{
@@ -113,7 +359,8 @@ func newSecretForGalera(name string) *corev1.Secret {
 			Namespace: corev1.NamespaceDefault,
 		},
 		Type:       corev1.SecretTypeOpaque,
-		StringData: strData,
+//		StringData: strData,
+		Data:       map[string][]byte{"user":[]byte("root"), "password":[]byte("test")},
 	}
 }
 
@@ -166,11 +413,7 @@ wsrep_sst_method               = mariabackup                         # SST metho
 }
 
 func newGalera(galeraName, credsName, configName string, replicas int) *apigalera.Galera {
-
-
-
 	credsRef := corev1.LocalObjectReference{Name: credsName}
-
 
 	configRef := corev1.LocalObjectReference{Name: configName}
 
@@ -197,7 +440,14 @@ func newGalera(galeraName, credsName, configName string, replicas int) *apigaler
 		Spec: apigalera.GaleraSpec{
 			Replicas:                  func() *int32 { i:= int32(replicas); return &i }(),
 			Pod:                       &podTemplate,
-			PersistentVolumeClaimSpec: corev1.PersistentVolumeClaimSpec{},
+			PersistentVolumeClaimSpec: corev1.PersistentVolumeClaimSpec{
+				AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				Resources:        corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: *resource.NewQuantity(1, resource.BinarySI),
+					},
+				},
+			},
 			Restore:                   nil,
 			RevisionHistoryLimit:      func() *int32 { limit := int32(2); return &limit}(),
 		},

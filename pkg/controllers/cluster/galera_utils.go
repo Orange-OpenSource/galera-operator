@@ -20,8 +20,11 @@ import (
 	"fmt"
 	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
 	pkggalera "galera-operator/pkg/galera"
+	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1beta1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -173,20 +176,30 @@ func isClaimMemberOf(galera *apigalera.Galera, claim *corev1.PersistentVolumeCla
 	return getClaimParentName(claim) == galera.Name
 }
 
+// getPersistentVolumeClaim returns a data claim matching the given galera and pod
 func getPersistentVolumeClaim(galera *apigalera.Galera, pod *corev1.Pod) *corev1.PersistentVolumeClaim {
-	suffix := getPodSuffix(pod)
-	claimName := getPersistentVolumeClaimName(galera, suffix)
-	claim := pkggalera.CreateGaleraClaim(&galera.Spec, galera.Labels, claimName, galera.Name, galera.Namespace, getPodRevision(pod), galera.AsOwner())
-
-	return claim
+	return pkggalera.CreateGaleraClaim(
+		&galera.Spec,
+		galera.Labels,
+		getPersistentVolumeClaimName(galera, getPodSuffix(pod)),
+		galera.Name,
+		galera.Namespace,
+		getPodRevision(pod),
+		galera.AsOwner(),
+		)
 }
 
+// getBackupPersistentVolumeClaim returns a backup claim matching the given galera and pod
 func getBackupPersistentVolumeClaim(galera *apigalera.Galera, pod *corev1.Pod) *corev1.PersistentVolumeClaim {
-	suffix := getPodSuffix(pod)
-	claimName := getBackupPersistentVolumeClaimName(galera, suffix)
-	claim := pkggalera.CreateGaleraClaim(&galera.Spec, galera.Labels, claimName, galera.Name, galera.Namespace, getPodRevision(pod), galera.AsOwner())
-
-	return claim
+	return pkggalera.CreateGaleraClaim(
+		&galera.Spec,
+		galera.Labels,
+		getBackupPersistentVolumeClaimName(galera, getPodSuffix(pod)),
+		galera.Name,
+		galera.Namespace,
+		getPodRevision(pod),
+		galera.AsOwner(),
+		)
 }
 
 // isClaimMatching tests if the PVC is matching the claim spec of the galera cluster. The default storage class name
@@ -294,8 +307,8 @@ func getPodRevision(pod *corev1.Pod) string {
 	return pod.Labels[apigalera.GaleraRevisionLabel]
 }
 
-// getClaimRevision gets the revision of the claim by inspecting the GaleraRevisionLabel. If claim has no revision the empty
-// string is returned.
+// getClaimRevision gets the revision of the claim by inspecting the GaleraRevisionLabel. If claim has no revision
+// the empty string is returned.
 func getClaimRevision(claim *corev1.PersistentVolumeClaim) string {
 	if claim.Labels == nil {
 		return ""
@@ -322,21 +335,80 @@ func newGaleraPod(galera *apigalera.Galera, revision, podName, role, state, addr
 	init bool, credsMap map[string]string) *corev1.Pod {
 
 	return pkggalera.NewGaleraPod(
-			&galera.Spec,
-			galera.Labels,
-			podName,
-			galera.Name,
-			galera.Namespace,
-			role,
-			addresses,
-			bootstrapImage,
-			backupImage,
-			revision,
-			state,
-			init,
-			credsMap,
-			galera.AsOwner(),
+		&galera.Spec,
+		galera.Labels,
+		podName,
+		galera.Name,
+		galera.Namespace,
+		role,
+		addresses,
+		bootstrapImage,
+		backupImage,
+		revision,
+		state,
+		init,
+		credsMap,
+		galera.AsOwner(),
 		)
+}
+
+// newGaleraPodDisruptionBudget creates a new Pod Disruption Budget for a Galera
+func newGaleraPodDisruptionBudget(galera *apigalera.Galera) *policyv1.PodDisruptionBudget {
+	return pkggalera.NewGaleraPodDisruptionBudget(
+		&galera.Spec,
+		galera.Labels,
+		galera.Name,
+		galera.Namespace,
+		getPDBName(galera.Name),
+		1,
+		galera.AsOwner(),
+		)
+}
+
+// newGaleraService is used to build services based on the given role
+func newGaleraService(galera *apigalera.Galera, serviceName, role string) *corev1.Service {
+	return pkggalera.NewGaleraService(
+		galera.ObjectMeta.Labels,
+		galera.Name,
+		galera.Namespace,
+		serviceName,
+		role,
+		galera.AsOwner(),
+		)
+}
+
+// newGaleraServiceMonitor returns a service used for monitoring Galera clusters
+func newGaleraServiceMonitor(galera *apigalera.Galera) *corev1.Service {
+	return pkggalera.NewGaleraServiceMonitor(
+		galera.ObjectMeta.Labels,
+		galera.Name,
+		galera.Namespace,
+		getServiceName(galera.Name, apigalera.ServiceMonitorSuffix, apigalera.MaxServiceMonitorLength),
+		*galera.Spec.Pod.Metric.Port,
+		galera.AsOwner(),
+		)
+}
+
+// newGaleraHeadlessService returns an headless service for Galera
+func newGaleraHeadlessService(galera *apigalera.Galera) *corev1.Service {
+	return pkggalera.NewGaleraHeadlessService(
+		galera.ObjectMeta.Labels,
+		galera.Name,
+		galera.Namespace,
+		getServiceName(galera.Name, apigalera.HeadlessServiceSuffix, apigalera.MaxHeadlessServiceLength),
+		galera.AsOwner(),
+		)
+}
+
+// selectorForGalera returns a selector build with Galera provided labels , Galera.Name and Galera.Namespace
+func selectorForGalera(galera *apigalera.Galera) (labels.Selector, error) {
+	return pkggalera.SelectorForGalera(galera.Labels, galera.Name, galera.Namespace)
+}
+
+// func claimLabelsForGalera returns a map with all labels needed for a Galera, it is used to patch labels with the
+// desired revsision
+func claimLabelsForGalera(galera *apigalera.Galera, revision string) map[string]string {
+	return pkggalera.ClaimLabelsForGalera(galera.Labels, galera.Name, galera.Namespace, revision)
 }
 
 // Match check if the given Galera's template matches the template stored in the given history.
@@ -355,11 +427,13 @@ func Match(galera *apigalera.Galera, history *appsv1.ControllerRevision) (bool, 
 func getPatch(galera *apigalera.Galera) ([]byte, error) {
 	str, err := runtime.Encode(patchCodec, galera)
 	if err != nil {
+		logrus.Infof("3")
 		return nil, err
 	}
 	var raw map[string]interface{}
 	err = json.Unmarshal([]byte(str), &raw)
 	if err != nil {
+		logrus.Infof("4")
 		return nil, err
 	}
 	objCopy := make(map[string]interface{})

@@ -59,7 +59,7 @@ var netClient = &http.Client{
 
 // NewProvider creates a new S3 (compatible) storage provider.
 func NewProvider(provider *apigalera.S3StorageProvider, credentials map[string]string, backupPod *corev1.Pod) (*Provider, error) {
-	logger := logrus.WithField("pkg", "backupcontroller")
+	logger := logrus.WithField("pkg", "backup")
 
 	accessKey, secretKey, err := getCredentials(credentials)
 	if err != nil {
@@ -92,13 +92,8 @@ func NewProvider(provider *apigalera.S3StorageProvider, credentials map[string]s
 func (p *Provider) Store(backupDir, key string) error {
 	p.logger.Infof("Storing backup (provider=S3, endpoint=%s, bucket=%s, key=%s)", p.s3.Endpoint, p.s3.Bucket, key)
 
-//	key = "toto"
-	logrus.Infof("SEB: backupdir = %s", backupDir)
-
 	p.s3.BackupDir = backupDir
 	p.s3.BackupName = key
-
-	logrus.Infof("SEB: S3 store = %#v", p.s3)
 
 	data, err := json.Marshal(p.s3)
 	if err != nil {
@@ -106,8 +101,6 @@ func (p *Provider) Store(backupDir, key string) error {
 	}
 
 	url := fmt.Sprintf("http://%s:8080/s3", p.backupPod.Status.PodIP)
-
-	logrus.Infof("SEB: url = %s", url)
 
 	resp, err := netClient.Post(url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
@@ -128,8 +121,6 @@ func (p *Provider) Store(backupDir, key string) error {
 
 	url = fmt.Sprintf("http://%s:8080/state/%s", p.backupPod.Status.PodIP, key)
 
-	logrus.Infof("SEB: url de check = %s", url)
-
 	// wait the backup to finnish
 	for {
 		resp, err := netClient.Get(url)
@@ -139,7 +130,6 @@ func (p *Provider) Store(backupDir, key string) error {
 		}
 		defer resp.Body.Close()
 		buffer, err := ioutil.ReadAll(resp.Body)
-		//		logrus.Infof("BODY : %s", string(buffer))
 
 		var response httpResponse
 
@@ -149,14 +139,11 @@ func (p *Provider) Store(backupDir, key string) error {
 			continue
 		}
 
-		logrus.Infof("SEB: code: %d / response state: %+v, response.Status=%s", resp.StatusCode, response, response.Status)
-
 		if resp.StatusCode == 200 && response.Status == "completed" {
 			p.logger.Infof("code: %d / response state: %+v", resp.StatusCode, response)
 			break
 		}
 
-		logrus.Infof("SEB: waiting 1 second")
 		time.Sleep(1 * time.Second)
 	}
 
@@ -170,26 +157,15 @@ func (p *Provider) Retrieve(key, restoreDir string) error {
 	p.s3.BackupName = key
 	p.s3.BackupDir = restoreDir
 
-	logrus.Infof("SEB: S3 restore = %#v", p.s3)
-
 	urlRestore := fmt.Sprintf("http://%s:8080/s3", p.backupPod.Status.PodIP)
 	urlCheck := fmt.Sprintf("http://%s:8080/state/%s", p.backupPod.Status.PodIP, key)
 
-	logrus.Infof("///////////////////////// ICI ////////////////////")
-
-
 	state, err := p.getState(urlCheck)
 	if err != nil {
-		logrus.Infof("SEB: error when running")
 		return err
 	}
 
-	logrus.Infof("SEB: retour de getState : %s", state)
-
 	if state != bkpconstants.StateRunning {
-
-		logrus.Infof("SEB: running")
-
 		dataS3, err := json.Marshal(p.s3)
 		if err != nil {
 			return err
@@ -201,15 +177,12 @@ func (p *Provider) Retrieve(key, restoreDir string) error {
 			return err
 		}
 
-		logrus.Infof("SEB: restore req : +#v", restoreReq)
-
 		// set headers
 		restoreReq.Header.Set("Content-Type", "application/json")
 
 		// do restore request
 		restoreResp, err := netClient.Do(restoreReq)
 		if err != nil {
-			logrus.Infof("SEB: restore response fail : %+v", restoreResp)
 			return err
 		}
 
@@ -223,65 +196,6 @@ func (p *Provider) Retrieve(key, restoreDir string) error {
 
 		p.logger.Infof("response get (restore) : code: %d /  message : %s", restoreResp.StatusCode, restoreBody.Message)
 	}
-
-	/*
-	resp, err := netClient.Get(urlCheck)
-	if err != nil {
-		p.logger.Infof("error : GET %s : %s", urlCheck, err)
-	} else {
-		defer resp.Body.Close()
-		buffer, err := ioutil.ReadAll(resp.Body)
-
-		var response httpResponse
-
-		err = json.Unmarshal(buffer, &response)
-		if err != nil {
-			p.logger.Infof("error : unmarshal %+v : %s", response, err)
-		} else {
-			logrus.Infof("SEB: code: %d / response state: %+v, response.Status=%s", resp.StatusCode, response, response.Status)
-
-			if resp.StatusCode == 200 && response.Status == "completed" {
-				p.logger.Infof("code: %d / response state: %+v", resp.StatusCode, response)
-				return nil
-			}
-		}
-	}
-	*/
-
-
-
-
-	/*
-	// wait the restore to finnish
-	for {
-		resp, err := netClient.Get(url)
-		if err != nil {
-			p.logger.Infof("error : GET %s : %s", url, err)
-			continue
-		}
-		defer resp.Body.Close()
-		buffer, err := ioutil.ReadAll(resp.Body)
-
-		var response httpResponse
-
-		err = json.Unmarshal(buffer, &response)
-		if err != nil {
-			p.logger.Infof("error : unmarshal %+v : %s", response, err)
-			continue
-		}
-
-		logrus.Infof("SEB: code: %d / response state: %+v, response.Status=%s", resp.StatusCode, response, response.Status)
-
-		if resp.StatusCode == 200 && response.Status == "completed" {
-			p.logger.Infof("code: %d / response state: %+v", resp.StatusCode, response)
-			break
-		}
-
-		time.Sleep(1 * time.Second)
-	}
-	*/
-
-	logrus.Infof("SEB: entering infinite loop")
 
 	ticker := time.NewTicker(1000 * time.Millisecond)
 
@@ -322,19 +236,7 @@ func (p *Provider) getState(url string) (string, error) {
 			p.logger.Infof("error : unmarshal %+v : %s", response, err)
 			return "", err
 		} else {
-			logrus.Infof("SEB:_____________ code: %d / response state: %+v", resp.StatusCode, response)
-
 			return response.Status, nil
-			/*
-			if resp.StatusCode == 200 {
-				p.logger.Infof("code: %d / response state: %+v", resp.StatusCode, response)
-				// response.Status == "running" or "completed" or "failed"
-				return response.Status, nil
-			} else {
-				return response.Status, errors.New(fmt.Sprintf("error with status %s and message %s", response.Status, response.Message))
-			}
-			*/
-
 		}
 	}
 }

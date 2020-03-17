@@ -21,7 +21,6 @@ import (
 	storagelisters "k8s.io/client-go/listers/storage/v1"
 )
 
-
 // GaleraStorageControlInterface defines the interface that GaleraController uses to access Storage
 // used by Galera clusters. It is implemented as an interface to provide for testing fakes.
 type GaleraStorageControlInterface interface {

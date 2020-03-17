@@ -1,6 +1,6 @@
 # Backup a Galera Cluster using Galera Operator
 
-Galera Operator provide a way to backup Galera Cluster using an implemented method to a remote storage. Today, only **mariabackup** and **S3** storage are available but other solutions can be implemented.
+Galera Operator provide a way to backup Galera Cluster using an implemented method to a remote storage. Today, only **mariabackup** method and **S3** storage are available but other solutions can be implemented.
 
 ## How to backup a Galera Cluster
 

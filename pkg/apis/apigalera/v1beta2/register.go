@@ -50,6 +50,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&GaleraList{},
 		&GaleraBackup{},
 		&GaleraBackupList{},
+		&UpgradeConfig{},
+		&UpgradeRuleList{},
+		&UpgradeRule{},
+		&UpgradeRuleList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

@@ -36,7 +36,6 @@ type GaleraRestoreControlInterface interface {
 	// HandleGaleraRestore implements the control logic for restoring a Galera cluster. All pod receive a copy of the backup
 	// and MethodType is used to rebuilt the database
 	HandleGaleraRestore(galera *apigalera.Galera, pods []*corev1.Pod, mapCredGalera map[string]string)
-
 }
 
 func NewRealGaleraRestoreControl(

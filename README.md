@@ -21,14 +21,14 @@ Today, Galera Operator can:
 
 ## Requirements
 * Kubernetes 1.12+
-* MariaDB 10.1.23 for Backup and Restore, only mariabackup is currently implemented
+* MariaDB 10.1.23 for Backup and Restore, only *mariabackup* is currently implemented
 * S3 storage for Backup and Restore, S3 is currently the only object storage implemented
 
 ## Features
 
 ### Deploy Galera Operator
 
-First, we need to deploy new kind of resources used to describe galera cluster and galera backup, note upgrade-config and upgrade-rule is a forthcoming feature used to validate is a cluster can be upgraded:
+First, we need to deploy new kind of resources used to describe galera cluster and galera backup, note upgrade-config and upgrade-rule is a forthcoming feature used to validate if a cluster can be upgraded:
 
 ```bash
 $ kubectl apply -f ./example-manifests/galera-crd/galera-crd.yaml
@@ -49,20 +49,17 @@ Galera Operator needs to have some rights on the Kubernetes cluster if RBAC (rec
 $ kubectl apply -f  ./example-manifests/galera-operator/10-operator-sa.yaml
 $ kubectl apply -f  ./example-manifests/galera-operator/20-role.yaml
 $ kubectl apply -f  ./example-manifests/galera-operator/30-role-binding.yaml
+$ kubectl apply -f  ./example-manifests/galera-operator/40-cluster-role.yaml
+$ kubectl apply -f  ./example-manifests/galera-operator/60-cluster-role-binding.yaml
 ```
 
 Deploy the operator using a deployment:
  
 ```bash
-$ kubectl apply -f  ./example-manifests/galera-operator/40-operator-deployment.yaml
+$ kubectl apply -f  ./example-manifests/galera-operator/70-operator-deployment.yaml
 ```
  
-note: Galera Operator can be deployed to be clusterwide, a flag must be set when deploying Galera Operator, and rights must use clusterRole and clusterRoleBinding 
-
-```bash
-$ kubectl apply -f  ./example-manifests/galera-operator/25-cluster-role.yaml
-$ kubectl apply -f  ./example-manifests/galera-operator/35-cluster-role-binding.yaml`
-```
+NOTE: do not deploy ./example-manifests/galera-operator/50-cluster-role-clusterwide.yaml, it is only used if you want to deploy the operator to manage galera objects clusterwide, see full documentation for that.
  
 Galera Operator also have some options configured by flags (have a look by starting Galerator Operator with help flag)
 
@@ -74,7 +71,7 @@ $ kubectl apply -f  ./example-manifests/galera-monitoring/operator-monitor.yaml
 
 ### Create Galera Cluster
 
-Once Galera Operator is deployed, Galera can be deployed. You need to deploy a ConfigMap to specify the my.cnf configuration. Operator will overwrite some parameters or add it if not present. A Secret is used to provide access to Galera Operator to interact with Galera.
+Once Galera Operator is deployed, Galera can be deployed. You need to deploy a ConfigMap to specify the my.cnf configuration. Operator will overwrite some parameters or add it if not present. A Secret is used to provide access to Galera Operator to interact with the managed galera cluster.
 
 ```bash
 $ kubectl apply -f ./example-manifests/galera-cluster/10-priority-class.yaml
@@ -95,7 +92,7 @@ Galera cluster can be resized in different ways:
 
     1 by changing the number of replicas
     2 by specifing new resource requirements
-    3 by changing volume claim spec, using different storage classes or a new specifying storage request
+    3 by changing volume claim spec, using different storage classes or a new specifying storage request, for example by changing request resource size
 
 Note that each time a modification on the Galera object is made (except if it is the number of replicas), a controllerRevisions is created.
 
@@ -140,6 +137,8 @@ $ kubectl apply -f ./example-manifests/galera-monitoring/galera-monitor.yaml
 ## Building the operator
 
 Kubernetes version: 1.13+
+
+This project uses Go modules to manage its dependencies, so feel free to work from outside of your `GOPATH`. However, if you'd like to continue to work from within your `GOPATH`, please export `GO111MODULE=on`.
 
 This operator use the kubernetes code-generator for:
   * clientset: used to manipulate objects defined in the CRD (GaleraCluster)

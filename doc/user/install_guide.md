@@ -53,17 +53,24 @@ Galera operator implements subresources, meaning the status and the spec can hav
 
 ### 1. Managing galera clusters in the same namespace
 
-Create **Role** and use **RoleBinding** bind the service account with the role:
+Create **Role** and use **RoleBinding** to bind the service account with the role:
 
 ```bash
 $ kubectl create -f ./example-manifests/galera-operator/20-role.yaml
 $ kubectl create -f ./example-manifests/galera-operator/30-role-binding.yaml
-````
+```
+
+Create **ClusterRole** and use **ClusterRoleBinding** to bind the service account with the role:
+
+```bash
+$ kubectl create -f ./example-manifests/galera-operator/40-cluster-role.yaml
+$ kubectl create -f ./example-manifests/galera-operator/60-cluster-role-binding.yaml
+```
 
 Galera operator is deployed using a **Deployment**
 
 ```bash
-$ kubectl create -f ./example-manifests/galera-operator/40-operator-deployment.yaml
+$ kubectl create -f ./example-manifests/galera-operator/70-operator-deployment.yaml
 ```
 
 
@@ -72,14 +79,14 @@ $ kubectl create -f ./example-manifests/galera-operator/40-operator-deployment.y
 Create **ClusterRole** and use **ClusterRoleBing** to bind it with the service account:
 
 ```bash
-$ kubectl create -f ./example-manifests/galera-operator/25-cluster-role.yaml
-$ kubectl create -f ./example-manifests/galera-operator/35-cluster-role-binding.yaml
+$ kubectl create -f ./example-manifests/galera-operator/50-cluster-role-clusterwide.yaml
+$ kubectl create -f ./example-manifests/galera-operator/60-cluster-role-binding.yaml
 ```
 
 To manage galera clusters in all namespaces, galera operator have to run with `-cluster-wide` arg option. You can edit the operator-deploymnet.yaml file and modify it.
 
 ```bash
-$ kubectl create -f ./example-manifests/galera-operator/40-operator-deployment.yaml
+$ kubectl create -f ./example-manifests/galera-operator/70-operator-deployment.yaml
 ```
 
 ## Uninstall galera operator

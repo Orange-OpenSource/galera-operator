@@ -16,7 +16,6 @@ package cluster
 
 import (
 	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
-	pkggalera "galera-operator/pkg/galera"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clientset "k8s.io/client-go/kubernetes"
@@ -76,7 +75,7 @@ func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceWriter(galera *a
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gsc.logger.Infof("Creating a new writer service for cluster %s/%s called %s", galera.Namespace, galera.Name, svcName)
-		svc := pkggalera.NewGaleraService(galera.ObjectMeta.Labels, galera.Name, galera.Namespace, svcName, apigalera.RoleWriter, galera.AsOwner())
+		svc := newGaleraService(galera, svcName, apigalera.RoleWriter)
 		_, err = gsc.client.CoreV1().Services(galera.Namespace).Create(svc)
 	}
 	return svcName, nil
@@ -88,7 +87,7 @@ func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceWriterBackup(gal
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gsc.logger.Infof("Creating a new writer backup service for cluster %s/%s called %s", galera.Namespace, galera.Name, svcName)
-		svc := pkggalera.NewGaleraService(galera.ObjectMeta.Labels, galera.Name, galera.Namespace, svcName, apigalera.RoleBackupWriter, galera.AsOwner())
+		svc := newGaleraService(galera, svcName, apigalera.RoleBackupWriter)
 		_, err = gsc.client.CoreV1().Services(galera.Namespace).Create(svc)
 	}
 	return svcName, err
@@ -100,7 +99,7 @@ func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceReader(galera *a
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gsc.logger.Infof("Creating a new reader service for cluster %s/%s called %s", galera.Namespace, galera.Name, svcName)
-		svc := pkggalera.NewGaleraService(galera.ObjectMeta.Labels, galera.Name, galera.Namespace, svcName, apigalera.Reader, galera.AsOwner())
+		svc := newGaleraService(galera, svcName, apigalera.Reader)
 		_, err = gsc.client.CoreV1().Services(galera.Namespace).Create(svc)
 	}
 	return svcName, err
@@ -112,7 +111,7 @@ func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceSpecial(galera *
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gsc.logger.Infof("Creating a new special service for cluster %s/%s called %s", galera.Namespace, galera.Name, svcName)
-		svc := pkggalera.NewGaleraService(galera.ObjectMeta.Labels, galera.Name, galera.Namespace, svcName, apigalera.RoleSpecial, galera.AsOwner())
+		svc := newGaleraService(galera, svcName, apigalera.RoleSpecial)
 		_, err = gsc.client.CoreV1().Services(galera.Namespace).Create(svc)
 	}
 	return svcName, err
@@ -124,7 +123,7 @@ func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceMonitor(galera *
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gsc.logger.Infof("Creating a new monitor service for cluster %s/%s called %s", galera.Namespace, galera.Name, svcName)
-		svc := pkggalera.NewGaleraServiceMonitor(galera.ObjectMeta.Labels, galera.Name, galera.Namespace, svcName, *galera.Spec.Pod.Metric.Port, galera.AsOwner())
+		svc := newGaleraServiceMonitor(galera)
 		_, err = gsc.client.CoreV1().Services(galera.Namespace).Create(svc)
 	}
 	return svcName, err
@@ -136,7 +135,7 @@ func (gsc *realGaleraServiceControl) CreateOrUpdateGaleraServiceInternal(galera 
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {
 		gsc.logger.Infof("Creating a new internal service for cluster %s/%s called %s", galera.Namespace, galera.Name, svcName)
-		svc := pkggalera.NewGaleraHeadlessService(galera.ObjectMeta.Labels, galera.Name, galera.Namespace, svcName, galera.AsOwner())
+		svc := newGaleraHeadlessService(galera)
 		_, err = gsc.client.CoreV1().Services(galera.Namespace).Create(svc)
 	}
 	return svcName, err

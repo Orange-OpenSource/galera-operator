@@ -24,40 +24,52 @@ import (
 )
 
 func PodLabelsForGalera(labels map[string]string, clusterName, clusterNamespace, role, revision, state string) map[string]string {
-	labels[apigalera.GaleraClusterName]      = clusterName
-	labels[apigalera.GaleraClusterNamespace] = clusterNamespace
-	labels[apigalera.GaleraStateLabel]       = state
-	labels[apigalera.GaleraRevisionLabel]    = revision
+	l := make(map[string]string)
+
+	for label, value := range labels {
+		l[label] = value
+	}
+
+	l[apigalera.GaleraClusterName]      = clusterName
+	l[apigalera.GaleraClusterNamespace] = clusterNamespace
+	l[apigalera.GaleraStateLabel]       = state
+	l[apigalera.GaleraRevisionLabel]    = revision
 
 	switch role {
 	case apigalera.RoleWriter:
-		labels[apigalera.GaleraRoleLabel]   = role
-		labels[apigalera.GaleraReaderLabel] = "false"
+		l[apigalera.GaleraRoleLabel]   = role
+		l[apigalera.GaleraReaderLabel] = "false"
 	case apigalera.RoleBackupWriter:
-		labels[apigalera.GaleraRoleLabel]   = role
-		labels[apigalera.GaleraReaderLabel] = "true"
+		l[apigalera.GaleraRoleLabel]   = role
+		l[apigalera.GaleraReaderLabel] = "true"
 	case apigalera.Backup:
-		labels[apigalera.GaleraBackupLabel] = "true"
-		labels[apigalera.GaleraReaderLabel] = "true"
+		l[apigalera.GaleraBackupLabel] = "true"
+		l[apigalera.GaleraReaderLabel] = "true"
 	case apigalera.Restore:
-		labels[apigalera.GaleraRoleLabel]   = role
+		l[apigalera.GaleraRoleLabel]   = role
 	case apigalera.Reader:
-		labels[apigalera.GaleraReaderLabel] = "true"
+		l[apigalera.GaleraReaderLabel] = "true"
 	case apigalera.RoleSpecial:
-		labels[apigalera.GaleraRoleLabel]   = role
-		labels[apigalera.GaleraReaderLabel] = "false"
+		l[apigalera.GaleraRoleLabel]   = role
+		l[apigalera.GaleraReaderLabel] = "false"
 	default:
 	}
 
-	return labels
+	return l
 }
 
 func ClaimLabelsForGalera(labels map[string]string, clusterName, clusterNamespace, revision string) map[string]string {
-	labels[apigalera.GaleraClusterName]      = clusterName
-	labels[apigalera.GaleraClusterNamespace] = clusterNamespace
-	labels[apigalera.GaleraRevisionLabel]    = revision
+	l := make(map[string]string)
 
-	return labels
+	for label, value := range labels {
+		l[label] = value
+	}
+
+	l[apigalera.GaleraClusterName]      = clusterName
+	l[apigalera.GaleraClusterNamespace] = clusterNamespace
+	l[apigalera.GaleraRevisionLabel]    = revision
+
+	return l
 }
 
 func buildName(name, prefix string) string {
@@ -79,10 +91,16 @@ func BuildBackupClaimNameForGalera(podName string) string {
 }
 
 func labelsForGalera(labels map[string]string, clusterName, clusterNamespace string) map[string]string {
-	labels[apigalera.GaleraClusterName]      = clusterName
-	labels[apigalera.GaleraClusterNamespace] = clusterNamespace
+	l := make(map[string]string)
 
-	return labels
+	for label, value := range labels {
+		l[label] = value
+	}
+
+	l[apigalera.GaleraClusterName]      = clusterName
+	l[apigalera.GaleraClusterNamespace] = clusterNamespace
+
+	return l
 }
 
 func serviceSelectorForGalera(clusterName, clusterNamespace, role string) map[string]string {

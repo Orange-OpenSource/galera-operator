@@ -10,6 +10,11 @@ DATE=`date +%FT%T%z`
 GITSHA=`git rev-parse HEAD`
 PREFIX=sebs42
 
+# Testing
+TESTING_NAMESPACE=default
+TESTING_DB_IMAGE_START=sebs42/mariadb:10.4.2-bionic
+TESTING_DB_IMAGE_UPGRADE=sebs42/mariadb:10.4.12-bionic
+
 # API
 API_VERSION=v1beta2
 
@@ -42,5 +47,13 @@ codegen: clean
 	./hack/update-codegen.sh
 	rm ./pkg/client/listers/apigalera/$(API_VERSION)/expansion_generated.go
 
-test:
-	go test -v pkg/controllers/cluster/galera_utils_test.go
+unittest:
+	go test -v ./pkg/galera
+	go test -v ./pkg/controllers/cluster
+
+inite2etest:
+	./test/init_e2etest.sh
+
+e2etest: inite2etest
+	go test -v ./test/e2e --kubeconfig=/Users/seb/.kube/config --operator-image=$(PREFIX)/$(APP_NAME):$(TAG) --namespace=$(TESTING_NAMESPACE)
+

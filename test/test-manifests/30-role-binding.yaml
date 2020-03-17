@@ -1,0 +1,11 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: galera-operator-test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: galera-operator-test
+subjects:
+  - kind: ServiceAccount
+    name: galera-operator-test

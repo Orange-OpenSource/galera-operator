@@ -21,7 +21,6 @@ import (
 	galerascheme "galera-operator/pkg/client/clientset/versioned/scheme"
 	informers "galera-operator/pkg/client/informers/externalversions/apigalera/v1beta2"
 	listers "galera-operator/pkg/client/listers/apigalera/v1beta2"
-	pkggalera "galera-operator/pkg/galera"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,9 +29,9 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
-	storageinformers "k8s.io/client-go/informers/storage/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	policyinformers "k8s.io/client-go/informers/policy/v1beta1"
+	storageinformers "k8s.io/client-go/informers/storage/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -807,7 +806,7 @@ func (gc *GaleraController) syncHandler(key string) error {
 		return err
 	}
 
-	selector, err := pkggalera.SelectorForGalera(galera.Labels, galera.Name, galera.Namespace)
+	selector, err := selectorForGalera(galera)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("error converting Galera %s/%s selector: %v", galera.Namespace, galera.Name, err))
 		// This is a non-transient error, so don't retry.

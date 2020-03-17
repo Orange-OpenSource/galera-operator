@@ -31,14 +31,27 @@ func NewGaleraPodDisruptionBudget(galspec *apigalera.GaleraSpec, labels map[stri
 func newGaleraPodDisruptionBudget(galspec *apigalera.GaleraSpec, labels map[string]string, clusterName, clusterNamespace, pdbName string, maxUnavailable int) *policyv1.PodDisruptionBudget {
 	i :=  intstr.FromInt(maxUnavailable)
 
+	labelsToMatch := labelsForGalera(labels, clusterName, clusterNamespace)
+	labelsToMatch[apigalera.GaleraStateLabel] = apigalera.StateCluster
+
+	labelSelector := metav1.SetAsLabelSelector(labelsToMatch)
+
+	lsr := metav1.LabelSelectorRequirement{
+		Key:      apigalera.GaleraRoleLabel,
+		Operator: metav1.LabelSelectorOpNotIn,
+		Values:   []string{apigalera.RoleSpecial},
+	}
+
+	labelSelector.MatchExpressions = []metav1.LabelSelectorRequirement{lsr}
+
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: pdbName,
 			Labels: labelsForGalera(labels, clusterName, clusterNamespace),
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
-			Selector: metav1.SetAsLabelSelector(labels),
 			MaxUnavailable: &i,
+			Selector: labelSelector,
 		},
 	}
 }
