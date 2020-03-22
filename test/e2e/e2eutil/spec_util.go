@@ -23,10 +23,9 @@ import (
 
 func NewGalera(galeraName, image, namespace, credsName, configName string, replicas int) *apigalera.Galera {
 	credsRef := corev1.LocalObjectReference{Name: credsName}
-
 	configRef := corev1.LocalObjectReference{Name: configName}
 
-	env := []corev1.EnvVar{corev1.EnvVar{Name: "MYSQL_ROOT_PASSWORD", Value: "test"}}
+	env := []corev1.EnvVar{corev1.EnvVar{Name: "MYSQL_ROOT_PASSWORD", Value: password}}
 
 	podTemplate := apigalera.PodTemplate{
 		CredentialsSecret: &credsRef,
@@ -43,7 +42,6 @@ func NewGalera(galeraName, image, namespace, credsName, configName string, repli
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      galeraName,
 			Namespace: namespace,
-//			UID:       types.UID("test"),
 			Labels:    GaleraLabelSelector(),
 		},
 		Spec: apigalera.GaleraSpec{
@@ -61,6 +59,16 @@ func NewGalera(galeraName, image, namespace, credsName, configName string, repli
 			RevisionHistoryLimit:      func() *int32 { limit := int32(2); return &limit}(),
 		},
 	}
+}
+
+func AddingSpecial(galera *apigalera.Galera) *apigalera.Galera {
+	special := apigalera.SpecialSpec{
+		SpecialResources:      nil,
+		GaleraSpecialEnv:      nil,
+		MycnfSpecialConfigMap: nil,
+	}
+	galera.Spec.Pod.Special = &special
+	return galera
 }
 
 func NewSecretForGalera(name, namespace string) *corev1.Secret {
@@ -123,5 +131,104 @@ wsrep_sst_method               = mariabackup                         # SST metho
 			Namespace: namespace,
 		},
 		Data: data,
+	}
+}
+
+func NewGaleraBackupS3Mariabackup(bkpName, namespace, galeraName, galeraSecretName, endpoint, bucket, s3SecretName string) *apigalera.GaleraBackup {
+	m := apigalera.MariaBackupMethodProvider{CredentialsBackup: &corev1.LocalObjectReference{Name: galeraSecretName}}
+	s := apigalera.S3StorageProvider{
+		Endpoint:          endpoint,
+		Bucket:            bucket,
+		CredentialsSecret: &corev1.LocalObjectReference{Name: s3SecretName},
+	}
+
+	return &apigalera.GaleraBackup{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       apigalera.GaleraBackupCRDResourceKind,
+			APIVersion: apigalera.SchemeGroupVersion.String(), //"sql.databases/v1beta2",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      bkpName,
+			Namespace: namespace,
+			Labels:    GaleraLabelSelector(),
+		},
+		Spec: apigalera.GaleraBackupSpec{
+			GaleraName:          galeraName,
+			MethodType:          "mariabackup",
+			MethodProvider:      apigalera.MethodProvider{
+				MariaBackup: &m,
+			},
+			StorageProviderType: "S3",
+			StorageProvider:     apigalera.StorageProvider{
+				S3: &s,
+			},
+		},
+	}
+}
+
+func NewSecretForGaleraBackupS3(name, namespace, id, secret string) *corev1.Secret {
+	return &corev1.Secret{
+		TypeMeta:   metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type:       corev1.SecretTypeOpaque,
+		Data:       map[string][]byte{"accessKeyId":[]byte(id), "secretAccessKey":[]byte(secret)},
+	}
+}
+
+func NewRestoreS3(galeraName, image, namespace, credsName, configName, bkpName, endpoint, bucket, s3SecretName string, replicas int) *apigalera.Galera {
+	credsRef := corev1.LocalObjectReference{Name: credsName}
+	configRef := corev1.LocalObjectReference{Name: configName}
+
+	env := []corev1.EnvVar{corev1.EnvVar{Name: "MYSQL_ROOT_PASSWORD", Value: password}}
+
+	s := apigalera.S3StorageProvider{
+		Endpoint:          endpoint,
+		Bucket:            bucket,
+		CredentialsSecret: &corev1.LocalObjectReference{Name: s3SecretName},
+	}
+
+	podTemplate := apigalera.PodTemplate{
+		CredentialsSecret: &credsRef,
+		Image:             image,
+		Env:               env,
+		MycnfConfigMap:    &configRef,
+	}
+
+	return &apigalera.Galera{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       apigalera.GaleraCRDResourceKind,
+			APIVersion: apigalera.SchemeGroupVersion.String(), //"sql.databases/v1beta2",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      galeraName,
+			Namespace: namespace,
+			Labels:    GaleraLabelSelector(),
+		},
+		Spec: apigalera.GaleraSpec{
+			Replicas:                  func() *int32 { i:= int32(replicas); return &i }(),
+			Pod:                       &podTemplate,
+			PersistentVolumeClaimSpec: corev1.PersistentVolumeClaimSpec{
+				AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				Resources:        corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: *resource.NewQuantity(1, resource.BinarySI),
+					},
+				},
+			},
+			Restore:                   &apigalera.RestoreSpec{
+				Name:                bkpName,
+				StorageProviderType: "S3",
+				StorageProvider:     apigalera.StorageProvider{
+					S3: &s,
+				},
+			},
+			RevisionHistoryLimit:      func() *int32 { limit := int32(2); return &limit}(),
+		},
 	}
 }

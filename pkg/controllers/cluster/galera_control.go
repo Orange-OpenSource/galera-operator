@@ -680,6 +680,7 @@ func (gc *defaultGaleraControl) runGalera(
 		return nil
 	}
 
+	/*
 	// If at lest one claim is terminating, do not go further
 	oneClaimTerminating := false
 	claimTerminating := ""
@@ -695,6 +696,7 @@ func (gc *defaultGaleraControl) runGalera(
 		gc.logger.Infof("galera %s/%s is waiting for Persistent Volume Claim %s to terminate ", currentGalera.Namespace, currentGalera.Name, claimTerminating)
 		return nil
 	}
+	*/
 
 	// Check if a new galera image is going to be deployed
 	newImage := false
@@ -712,8 +714,11 @@ func (gc *defaultGaleraControl) runGalera(
 		return err
 	}
 
-	// Delete backup claim not mapped by a pod and return a suffixes' list of unused claims, if a claim was modified,
-	// stop processing galera for this round
+	// Return a suffixes' list of unused claims.
+	// Do not go further, if
+	// 1. a claim is terminating
+	// 2. a backup claim not mapped by a pod is found : delete this claim
+	// 3. a claim is not matching the galera claim spec : delete this claim
 	unusedClaimSuffixes, op, err := gc.listDataAndDeleteUnusedClaims(nextGalera, podSuffixes, bkpSuffixes, claims, defaultSCName)
 	if err != nil || op == true {
 		return err
@@ -1098,6 +1103,7 @@ func (gc *defaultGaleraControl) listDataAndDeleteUnusedClaims(
 				}
 			}
 			if exist == false {
+				// delete claim if not matching the galera claim spec
 				if isClaimMatching(galera, claim, defaultSCName) {
 					claimSuffix = append(claimSuffix, suffix)
 				} else {

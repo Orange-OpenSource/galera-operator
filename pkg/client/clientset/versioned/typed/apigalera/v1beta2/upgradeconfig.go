@@ -18,6 +18,7 @@ package v1beta2
 import (
 	v1beta2 "galera-operator/pkg/apis/apigalera/v1beta2"
 	scheme "galera-operator/pkg/client/clientset/versioned/scheme"
+	"time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -73,11 +74,16 @@ func (c *upgradeConfigs) Get(name string, options v1.GetOptions) (result *v1beta
 
 // List takes label and field selectors, and returns the list of UpgradeConfigs that match those selectors.
 func (c *upgradeConfigs) List(opts v1.ListOptions) (result *v1beta2.UpgradeConfigList, err error) {
+	var timeout time.Duration
+	if opts.TimeoutSeconds != nil {
+		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
+	}
 	result = &v1beta2.UpgradeConfigList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("upgradeconfigs").
 		VersionedParams(&opts, scheme.ParameterCodec).
+		Timeout(timeout).
 		Do().
 		Into(result)
 	return
@@ -85,11 +91,16 @@ func (c *upgradeConfigs) List(opts v1.ListOptions) (result *v1beta2.UpgradeConfi
 
 // Watch returns a watch.Interface that watches the requested upgradeConfigs.
 func (c *upgradeConfigs) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	var timeout time.Duration
+	if opts.TimeoutSeconds != nil {
+		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
+	}
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
 		Resource("upgradeconfigs").
 		VersionedParams(&opts, scheme.ParameterCodec).
+		Timeout(timeout).
 		Watch()
 }
 
@@ -131,10 +142,15 @@ func (c *upgradeConfigs) Delete(name string, options *v1.DeleteOptions) error {
 
 // DeleteCollection deletes a collection of objects.
 func (c *upgradeConfigs) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+	var timeout time.Duration
+	if listOptions.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("upgradeconfigs").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
+		Timeout(timeout).
 		Body(options).
 		Do().
 		Error()

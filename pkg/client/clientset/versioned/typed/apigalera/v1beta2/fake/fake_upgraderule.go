@@ -117,7 +117,7 @@ func (c *FakeUpgradeRules) DeleteCollection(options *v1.DeleteOptions, listOptio
 // Patch applies the patch and returns the patched upgradeRule.
 func (c *FakeUpgradeRules) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.UpgradeRule, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(upgraderulesResource, c.ns, name, data, subresources...), &v1beta2.UpgradeRule{})
+		Invokes(testing.NewPatchSubresourceAction(upgraderulesResource, c.ns, name, pt, data, subresources...), &v1beta2.UpgradeRule{})
 
 	if obj == nil {
 		return nil, err

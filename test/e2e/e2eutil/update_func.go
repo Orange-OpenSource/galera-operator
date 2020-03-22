@@ -15,23 +15,18 @@
 package e2eutil
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
 )
 
-// OperatorLabelSelector returns a label selector for Galera Operator Pod
-func OperatorLabelSelector() map[string]string {
-	return map[string]string{"name": "galera-operator", "stage":"test"}
+type GaleraUpdateFunc func(*apigalera.Galera)
+
+func GaleraWithNewImage(galera *apigalera.Galera, image string) *apigalera.Galera {
+	galera.Spec.Pod.Image = image
+	return galera
 }
 
-// GaleraLabelSelector returns a label selector for Galera Cluster
-func GaleraLabelSelector() map[string]string {
-	return map[string]string{"name": "galera-cluster", "stage":"test"}
+func GaleraSize(galera *apigalera.Galera, size int) *apigalera.Galera {
+	newSize := int32(size)
+	galera.Spec.Replicas = &newSize
+	return galera
 }
-
-func GaleraListOpt() metav1.ListOptions {
-	return metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(GaleraLabelSelector()).String(),
-	}
-}
-

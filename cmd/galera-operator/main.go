@@ -61,7 +61,7 @@ func init() {
 	flag.IntVar(&backupThread,"backup-thread", constants.BackupThread, "Specify the number of thread for the backup controllers" )
 	flag.StringVar(&bootstrapImage, "bootstrap", constants.BootstrapImage, "Container image used to bootstrap galera clusters (it is not the galera image)")
 	flag.StringVar(&backupImage, "backup", constants.BackupImage, "Container image used to backup/restore galera clusters (it is not the galera image)")
-	flag.StringVar(&upgradeConfig, "config-map", constants.UpgradeConfig, "Upgrade Config plan, empty string for no control")
+	flag.StringVar(&upgradeConfig, "upgrade-config", constants.UpgradeConfig, "Upgrade Config CR used to check upgrades, empty string for no control")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 }
 

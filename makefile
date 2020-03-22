@@ -9,11 +9,16 @@ TAG=`git describe --tags`
 DATE=`date +%FT%T%z`
 GITSHA=`git rev-parse HEAD`
 PREFIX=sebs42
+RELEASE_K8S=release-1.12
 
 # Testing
 TESTING_NAMESPACE=default
 TESTING_DB_IMAGE_START=sebs42/mariadb:10.4.2-bionic
 TESTING_DB_IMAGE_UPGRADE=sebs42/mariadb:10.4.12-bionic
+TESTING_S3_ACCESS_KEY_ID=sebs42
+TESTING_S3_SECRET_ACCESS_KEY=miniotest
+TESTING_S3_ENDPOINT=http://minio.apps-rocks.fr
+TESTING_S3_BUCKET=gal
 
 # API
 API_VERSION=v1beta2
@@ -42,6 +47,9 @@ push: container
 clean:
 	rm -rf $(OUTPUT_DIR)
 	docker rmi -f "$(PREFIX)/$(APP_NAME):$(TAG)" || true
+
+clonegen:
+	git clone -b $(RELEASE_K8S) https://github.com/kubernetes/code-generator ./vendor/k8s.io/code-generator
 
 codegen: clean
 	./hack/update-codegen.sh

@@ -18,6 +18,7 @@ package v1beta2
 import (
 	v1beta2 "galera-operator/pkg/apis/apigalera/v1beta2"
 	scheme "galera-operator/pkg/client/clientset/versioned/scheme"
+	"time"
 
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,11 +79,16 @@ func (c *galeras) Get(name string, options v1.GetOptions) (result *v1beta2.Galer
 
 // List takes label and field selectors, and returns the list of Galeras that match those selectors.
 func (c *galeras) List(opts v1.ListOptions) (result *v1beta2.GaleraList, err error) {
+	var timeout time.Duration
+	if opts.TimeoutSeconds != nil {
+		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
+	}
 	result = &v1beta2.GaleraList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("galeras").
 		VersionedParams(&opts, scheme.ParameterCodec).
+		Timeout(timeout).
 		Do().
 		Into(result)
 	return
@@ -90,11 +96,16 @@ func (c *galeras) List(opts v1.ListOptions) (result *v1beta2.GaleraList, err err
 
 // Watch returns a watch.Interface that watches the requested galeras.
 func (c *galeras) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	var timeout time.Duration
+	if opts.TimeoutSeconds != nil {
+		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
+	}
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
 		Resource("galeras").
 		VersionedParams(&opts, scheme.ParameterCodec).
+		Timeout(timeout).
 		Watch()
 }
 
@@ -152,10 +163,15 @@ func (c *galeras) Delete(name string, options *v1.DeleteOptions) error {
 
 // DeleteCollection deletes a collection of objects.
 func (c *galeras) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+	var timeout time.Duration
+	if listOptions.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("galeras").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
+		Timeout(timeout).
 		Body(options).
 		Do().
 		Error()

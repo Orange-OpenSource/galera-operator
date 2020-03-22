@@ -15,13 +15,14 @@
 package e2e
 
 import (
+	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
 	"galera-operator/test/e2e/e2eutil"
 	"galera-operator/test/e2e/framework"
 	"os"
 	"testing"
 )
 
-func TestCreateCluster(t *testing.T) {
+func TestUpgradeGalera(t *testing.T) {
 	galeraImage := os.Getenv(envImage)
 
 	f := framework.Global
@@ -35,7 +36,9 @@ func TestCreateCluster(t *testing.T) {
 		t.Fatalf("failed to create secret: %v", err)
 	}
 
-	testGalera, err := e2eutil.CreateGalera(t, f.GaleraClient, f.Namespace, e2eutil.NewGalera("test-galera", galeraImage, f.Namespace, testSecret.Name, testConfigMap.Name, 3))
+	replicas := 3
+
+	testGalera, err := e2eutil.CreateGalera(t, f.GaleraClient, f.Namespace, e2eutil.NewGalera("test-galera", galeraImage, f.Namespace, testSecret.Name, testConfigMap.Name, replicas))
 	if err != nil {
 		t.Fatalf("failed to create galera cluster: %v", err)
 	}
@@ -54,8 +57,35 @@ func TestCreateCluster(t *testing.T) {
 		}
 	}()
 
-	if _, err := e2eutil.WaitUntilSizeReached(t, f.GaleraClient, 3, 12, testGalera); err != nil {
-		t.Fatalf("failed to create 3 members galera cluster: %v", err)
+	err = e2eutil.WaitSizeAndImageReached(t, f.KubeClient, galeraImage, replicas, 12, testGalera)
+	if err != nil {
+		t.Fatalf("failed to create %d nodes galera cluster: %v", replicas, err)
 	}
-}
+	e2eutil.LogfWithTimestamp(t, "reached to %d galera nodes with image %s", replicas, galeraImage)
 
+	e2eutil.LogfWithTimestamp(t, "adding data on one node")
+	if err := e2eutil.AddData(f.KubeClient, f.Config, testGalera); err != nil {
+		t.Fatalf("failed to add data to galera %s/%s", testGalera.Namespace, testGalera.Name)
+	}
+
+	galeraImageUpgrade := os.Getenv(envImageUpgrade)
+	updateFunc := func(galera *apigalera.Galera) {
+		galera = e2eutil.GaleraWithNewImage(galera, galeraImageUpgrade)
+	}
+
+	if _, err = e2eutil.UpdateGalera(f.GaleraClient, testGalera.Name, testGalera.Namespace, 3, updateFunc); err != nil {
+		t.Fatalf("failed to upgrade galera cluster")
+	}
+
+	if err := e2eutil.WaitSizeAndImageReached(t, f.KubeClient, galeraImageUpgrade, replicas, 12, testGalera); err != nil {
+		t.Fatalf("failed to wait new image on each galera node: %v", err)
+	}
+
+	e2eutil.LogfWithTimestamp(t, "checking data on all nodes")
+	ok, err := e2eutil.CheckData(f.KubeClient, f.Config, testGalera)
+	if err != nil || ok == false {
+		t.Fatalf("failed to check data : %s", err)
+	}
+
+	e2eutil.LogfWithTimestamp(t, "reached to %d galera nodes with image %s", replicas, galeraImageUpgrade)
+}

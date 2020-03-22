@@ -18,7 +18,7 @@ const (
 	// ClusterCRDResourceKind is the Kind of a Cluster.
 	GaleraCRDResourceKind = "Galera"
 	// GaleraBackupCRDResourceKind is the Kind of a Backup.
-	//GaleraBackupCRDResourceKind = "GaleraBackup"
+	GaleraBackupCRDResourceKind = "GaleraBackup"
 
 	BootstrapContainerName = "bootstrap"
 	GaleraContainerName    = "galera"

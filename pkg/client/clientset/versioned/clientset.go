@@ -16,6 +16,7 @@
 package versioned
 
 import (
+	"fmt"
 	sqlv1beta2 "galera-operator/pkg/client/clientset/versioned/typed/apigalera/v1beta2"
 
 	discovery "k8s.io/client-go/discovery"
@@ -26,8 +27,6 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	SqlV1beta2() sqlv1beta2.SqlV1beta2Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Sql() sqlv1beta2.SqlV1beta2Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -42,12 +41,6 @@ func (c *Clientset) SqlV1beta2() sqlv1beta2.SqlV1beta2Interface {
 	return c.sqlV1beta2
 }
 
-// Deprecated: Sql retrieves the default version of SqlClient.
-// Please explicitly pick a version.
-func (c *Clientset) Sql() sqlv1beta2.SqlV1beta2Interface {
-	return c.sqlV1beta2
-}
-
 // Discovery retrieves the DiscoveryClient
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	if c == nil {
@@ -57,9 +50,14 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 }
 
 // NewForConfig creates a new Clientset for the given config.
+// If config's RateLimiter is not set and QPS and Burst are acceptable,
+// NewForConfig will generate a rate-limiter in configShallowCopy.
 func NewForConfig(c *rest.Config) (*Clientset, error) {
 	configShallowCopy := *c
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
+		if configShallowCopy.Burst <= 0 {
+			return nil, fmt.Errorf("Burst is required to be greater than 0 when RateLimiter is not set and QPS is set to greater than 0")
+		}
 		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
 	}
 	var cs Clientset

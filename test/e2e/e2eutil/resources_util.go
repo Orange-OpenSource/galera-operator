@@ -15,13 +15,15 @@
 package e2eutil
 
 import (
+	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
 	"galera-operator/pkg/client/clientset/versioned"
-	//	"galera-operator/test/e2e/retryutil"
+	"galera-operator/test/e2e/retryutil"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"testing"
-	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
-	//	"time"
-	corev1 "k8s.io/api/core/v1"
+	"time"
 )
 
 func CreateGalera(t *testing.T, galeraClient versioned.Interface, namespace string, galera *apigalera.Galera) (*apigalera.Galera, error) {
@@ -73,23 +75,32 @@ func DeleteSecret(t *testing.T, kubeClient kubernetes.Interface, secret *corev1.
 	return kubeClient.CoreV1().Secrets(secret.Namespace).Delete(secret.Name, nil)
 }
 
+func CreateGaleraBackup(t *testing.T, galeraClient versioned.Interface, namespace string, bkp *apigalera.GaleraBackup) (*apigalera.GaleraBackup, error) {
+	res, err := galeraClient.SqlV1beta2().GaleraBackups(namespace).Create(bkp)
+	if err != nil {
+		return nil, err
+	}
+	t.Logf("creating galera backup: %s", res.Name)
 
-/*
-func UpdateCluster(crClient versioned.Interface, cl *api.EtcdCluster, maxRetries int, updateFunc k8sutil.EtcdClusterCRUpdateFunc) (*api.EtcdCluster, error) {
-	return AtomicUpdateClusterCR(crClient, cl.Name, cl.Namespace, maxRetries, updateFunc)
+	return res, nil
 }
 
-func AtomicUpdateClusterCR(crClient versioned.Interface, name, namespace string, maxRetries int, updateFunc k8sutil.EtcdClusterCRUpdateFunc) (*api.EtcdCluster, error) {
-	result := &api.EtcdCluster{}
+func DeleteGaleraBackup(t *testing.T, galeraClient versioned.Interface, bkp *apigalera.GaleraBackup) error {
+	t.Logf("deleting galera backup: %v", bkp.Name)
+	return galeraClient.SqlV1beta2().GaleraBackups(bkp.Namespace).Delete(bkp.Name, nil)
+}
+
+func UpdateGalera(galeraClient versioned.Interface, name, namespace string, maxRetries int, updateFunc GaleraUpdateFunc) (*apigalera.Galera, error) {
+	result := &apigalera.Galera{}
 	err := retryutil.Retry(1*time.Second, maxRetries, func() (done bool, err error) {
-		etcdCluster, err := crClient.EtcdV1beta2().EtcdClusters(namespace).Get(name, metav1.GetOptions{})
+		galera, err := galeraClient.SqlV1beta2().Galeras(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
 
-		updateFunc(etcdCluster)
+		updateFunc(galera)
 
-		result, err = crClient.EtcdV1beta2().EtcdClusters(namespace).Update(etcdCluster)
+		result, err = galeraClient.SqlV1beta2().Galeras(namespace).Update(galera)
 		if err != nil {
 			if apierrors.IsConflict(err) {
 				return false, nil
@@ -100,5 +111,5 @@ func AtomicUpdateClusterCR(crClient versioned.Interface, name, namespace string,
 	})
 	return result, err
 }
- */
+
 

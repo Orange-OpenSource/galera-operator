@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"os/exec"
 	"time"
@@ -38,10 +39,11 @@ import (
 var Global *Framework
 
 type Framework struct {
-	opImage      string
 	KubeClient   kubernetes.Interface
 	GaleraClient versioned.Interface
+	Config		 *rest.Config
 	Namespace    string
+	opImage      string
 }
 
 // Setup setups a test framework and points "Global" to it.
@@ -68,6 +70,7 @@ func Setup() error {
 	Global = &Framework{
 		KubeClient:   cli,
 		GaleraClient: galeraCli,
+		Config:       config,
 		Namespace:    *ns,
 		opImage:      *opImage,
 	}

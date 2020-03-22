@@ -129,7 +129,7 @@ func (c *FakeGaleraBackups) DeleteCollection(options *v1.DeleteOptions, listOpti
 // Patch applies the patch and returns the patched galeraBackup.
 func (c *FakeGaleraBackups) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.GaleraBackup, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(galerabackupsResource, c.ns, name, data, subresources...), &v1beta2.GaleraBackup{})
+		Invokes(testing.NewPatchSubresourceAction(galerabackupsResource, c.ns, name, pt, data, subresources...), &v1beta2.GaleraBackup{})
 
 	if obj == nil {
 		return nil, err

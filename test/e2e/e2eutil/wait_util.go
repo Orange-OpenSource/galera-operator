@@ -61,25 +61,41 @@ func WaitUntilOperatorReady(kubecli kubernetes.Interface, namespace string) erro
 	return nil
 }
 
-func WaitUntilSizeReached(t *testing.T, galeraClient versioned.Interface, size, retries int, galera *apigalera.Galera /*, accepts ...acceptFunc*/) ([]string, error) {
+
+func WaitPhaseReached(t *testing.T, galeraClient versioned.Interface, retries int, galera *apigalera.Galera, phase apigalera.GaleraPhase) error {
+	return retryutil.Retry(retryInterval, retries, func() (bool, error) {
+		currCluster, err := galeraClient.SqlV1beta2().Galeras(galera.Namespace).Get(galera.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		if currCluster.Status.Phase == phase {
+			return true, nil
+		}
+		return false, nil
+	})
+}
+
+func WaitUntilSizeReached(t *testing.T, galeraClient versioned.Interface, size, retries int, galera *apigalera.Galera) ([]string, error) {
 	var names []string
+	var special int
+
 	err := retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
 		currCluster, err := galeraClient.SqlV1beta2().Galeras(galera.Namespace).Get(galera.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
-/*
-		for _, accept := range accepts {
-			if !accept(currCluster) {
-				return false, nil
+
+		special = 0
+		if galera.Spec.Pod.Special != nil {
+			if currCluster.Status.Members.Special != "" {
+				special = 1
 			}
 		}
-*/
-
 
 		names = currCluster.Status.Members.Ready
 		LogfWithTimestamp(t, "waiting size (%d), healthy galera nodes: names (%v)", size, names)
-		if len(names) != size {
+		if len(names) + special != size {
 			return false, nil
 		}
 		return true, nil
@@ -88,6 +104,42 @@ func WaitUntilSizeReached(t *testing.T, galeraClient versioned.Interface, size, 
 		return nil, err
 	}
 	return names, nil
+}
+
+func WaitSizeAndImageReached(t *testing.T, kubeClient kubernetes.Interface, image string, size, retries int, galera *apigalera.Galera) error {
+	return retryutil.Retry(retryInterval, retries, func() (done bool, err error) {
+		var names []string
+		podList, err := kubeClient.CoreV1().Pods(galera.Namespace).List(GaleraListOpt())
+		if err != nil {
+			return false, err
+		}
+		names = nil
+		var nodeNames []string
+		for i := range podList.Items {
+			pod := &podList.Items[i]
+			if pod.Status.Phase != corev1.PodRunning {
+				continue
+			}
+
+			find := false
+			for _, s := range pod.Status.ContainerStatuses {
+				if s.Image == image {
+					find = true
+				}
+			}
+			if find == false {
+				LogfWithTimestamp(t, "pod(%v): expected image(%v) not found", pod.Name, image)
+			} else {
+				names = append(names, pod.Name)
+				nodeNames = append(nodeNames, pod.Spec.NodeName)
+			}
+		}
+		LogfWithTimestamp(t, "waiting size (%d), galera pods: names (%v), nodes (%v)", size, names, nodeNames)
+		if len(names) != size {
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 func LogfWithTimestamp(t *testing.T, format string, args ...interface{}) {
@@ -186,12 +238,6 @@ func waitPodsDeleted(kubecli kubernetes.Interface, namespace string, retries int
 	f := func(p *corev1.Pod) bool { return p.DeletionTimestamp != nil }
 	return waitPodsDeletedWithFilters(kubecli, namespace, retries, lo, f)
 }
-
-/*
-func WaitPodsDeletedCompletely(kubecli kubernetes.Interface, namespace string, retries int, lo metav1.ListOptions) ([]*corev1.Pod, error) {
-	return waitPodsDeleted(kubecli, namespace, retries, lo)
-}
-*/
 
 func waitPodsDeletedWithFilters(kubecli kubernetes.Interface, namespace string, retries int, lo metav1.ListOptions, filters ...filterPodFunc) ([]*corev1.Pod, error) {
 	var pods []*corev1.Pod

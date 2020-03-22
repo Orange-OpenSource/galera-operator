@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package e2eutil
 
 const (
-	envImage        = "TESTING_DB_IMAGE_START"
-	envImageUpgrade = "TESTING_DB_IMAGE_UPGRADE"
+	user     = "root"
+	password = "test"
 )
