@@ -29,7 +29,7 @@ func TestPodLabelsForGalera(t *testing.T) {
 	revision := "59889f974c"
 	state := apigalera.StateCluster
 
-	retLabels := PodLabelsForGalera(labels, name, namespace, role, revision, state)
+	retLabels := PodLabelsForGalera(name, namespace, role, revision, state)
 
 	if retLabels["foo"] != "bar" {
 		t.Errorf("Expected to find the input values [foo = bar]")
@@ -52,10 +52,7 @@ func TestPodLabelsForGalera(t *testing.T) {
 	if retLabels[apigalera.GaleraReaderLabel] != "false" {
 		t.Errorf("Expected to find false for the ReaderLabel")
 	}
-	if size := len(retLabels); size != 7 {
-		t.Errorf("Expected a size of 5, got a size of %d", size)
-	}
-	if len(labels) != 1 {
-		t.Errorf("Labels must not be modfied")
+	if size := len(retLabels); size != 6 {
+		t.Errorf("Expected a size of 6, got a size of %d", size)
 	}
 }

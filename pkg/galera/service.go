@@ -43,7 +43,6 @@ func NewGaleraHeadlessService(galLabels map[string]string, clusterName, clusterN
 
 func newGaleraService(galLabels map[string]string, clusterName, clusterNamespace, svcName, role string) *corev1.Service {
 	labels := serviceSelectorForGalera(clusterName, clusterNamespace, role)
-	mergeLabels(labels, galLabels)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -60,7 +59,6 @@ func newGaleraService(galLabels map[string]string, clusterName, clusterNamespace
 
 func newGaleraServiceMonitor(galLabels map[string]string, clusterName, clusterNamespace, svcName string, port int32) *corev1.Service {
 	labels := serviceSelectorForGalera(clusterName, clusterNamespace, "")
-	mergeLabels(labels, galLabels)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -77,7 +75,6 @@ func newGaleraServiceMonitor(galLabels map[string]string, clusterName, clusterNa
 
 func newGaleraHeadlessService(galLabels map[string]string, clusterName, clusterNamespace, svcName string) *corev1.Service {
 	labels := serviceSelectorForGalera(clusterName, clusterNamespace,"")
-	mergeLabels(labels, galLabels)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

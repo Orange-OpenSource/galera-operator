@@ -21,6 +21,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	policylisters "k8s.io/client-go/listers/policy/v1beta1"
 	"k8s.io/client-go/tools/record"
+	"reflect"
 )
 
 // GaleraPodDisruptionBudgetControlInterface defines the interface that GaleraController uses to create, update,
@@ -52,12 +53,17 @@ type realGaleraPodDisruptionBudgetControl struct {
 
 func (gpc *realGaleraPodDisruptionBudgetControl) CreateOrUpdateGaleraPDB(galera *apigalera.Galera) (string, error) {
 	pdbName := getPDBName(galera.Name)
-	pdb, err := gpc.pdbLister.PodDisruptionBudgets(galera.Namespace).Get(pdbName)
-	// If the resource doesn't exist, we'll create it
+	pdb := newGaleraPodDisruptionBudget(galera)
+	curPdb, err := gpc.pdbLister.PodDisruptionBudgets(galera.Namespace).Get(pdbName)
+
 	if apierrors.IsNotFound(err) {
 		gpc.logger.Infof("Creating a new PodDisruptionBudget for cluster %s called %s", galera.Name, pdbName)
-		pdb = newGaleraPodDisruptionBudget(galera)
 		_, err = gpc.client.PolicyV1beta1().PodDisruptionBudgets(galera.Namespace).Create(pdb)
+	} else {
+		if !reflect.DeepEqual(curPdb.Labels, pdb.Labels) {
+			curPdb.Labels = pdb.Labels
+			_, err = gpc.client.PolicyV1beta1().PodDisruptionBudgets(galera.Namespace).Update(curPdb)
+		}
 	}
 	return pdbName, err
 }

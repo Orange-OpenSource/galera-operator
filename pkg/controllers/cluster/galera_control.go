@@ -680,24 +680,6 @@ func (gc *defaultGaleraControl) runGalera(
 		return nil
 	}
 
-	/*
-	// If at lest one claim is terminating, do not go further
-	oneClaimTerminating := false
-	claimTerminating := ""
-
-	for _, claim := range claims {
-		if isClaimTerminating(claim) {
-			oneClaimTerminating = true
-			claimTerminating = claim.Name
-		}
-	}
-
-	if oneClaimTerminating {
-		gc.logger.Infof("galera %s/%s is waiting for Persistent Volume Claim %s to terminate ", currentGalera.Namespace, currentGalera.Name, claimTerminating)
-		return nil
-	}
-	*/
-
 	// Check if a new galera image is going to be deployed
 	newImage := false
 	if currentGalera.Spec.Pod.Image != nextGalera.Spec.Pod.Image {
@@ -751,8 +733,36 @@ func (gc *defaultGaleraControl) runGalera(
 			unusedClaimSuffixes)
 	}
 
+	// At this point, all of the current Replicas are Running and Ready, we can consider termination.
+	err = gc.considerPodTermination(
+		nextGalera,
+		status,
+		readyPods,
+		unreadyPods,
+		claims,
+		unusedClaimSuffixes,
+		*nextGalera.Spec.Replicas,
+		currentRevision, nextRevision,
+		mapCredGalera)
+	if err != nil {
+		return err
+	}
+
+	// Managing the update by deleting a pod that does not match the update revision
+	err = gc.deletePodForUpgrade(
+		nextGalera,
+		status,
+		readyPods,
+		currentRevision,
+		nextRevision,
+		mapCredGalera,
+		defaultSCName)
+	if err != nil {
+		return err
+	}
+
 	// Manage the special node
-	if nextGalera.Spec.Pod.Special != nil {
+	if nextGalera.Spec.Special != nil {
 		err = gc.manageSpecialNode(
 			nextGalera,
 			status,
@@ -778,30 +788,7 @@ func (gc *defaultGaleraControl) runGalera(
 		}
 	}
 
-	// At this point, all of the current Replicas are Running and Ready, we can consider termination.
-	err = gc.considerPodTermination(
-		nextGalera,
-		status,
-		readyPods,
-		unreadyPods,
-		claims,
-		unusedClaimSuffixes,
-		*nextGalera.Spec.Replicas,
-		currentRevision, nextRevision,
-		mapCredGalera)
-	if err != nil {
-		return err
-	}
-
-	// Managing the update by deleting a pod that does not match the update revision
-	return gc.deletePodForUpgrade(
-		nextGalera,
-		status,
-		readyPods,
-		currentRevision,
-		nextRevision,
-		mapCredGalera,
-		defaultSCName)
+	return nil
 }
 
 // scheduleGaleraRestore is the first part of restoring
@@ -845,7 +832,6 @@ func (gc *defaultGaleraControl) scheduleGaleraRestore(
 	}
 
 	// Delete backup claim not mapped by a pod and return a suffixes' list of unused claims
-	//unusedClaimSuffixes, err := gc.listDataAndDeleteUnusedClaims(galera, podSuffix, bkpSuffix, claims)
 	unusedClaimSuffixes, op, err := gc.listDataAndDeleteUnusedClaims(galera, podSuffix, []string{}, claims, defaultSCName)
 	if err != nil || op == true {
 		return err
@@ -1060,8 +1046,10 @@ func setStatusPhaseAndConditions(
 	return nil
 }
 
-// listDataAndDeleteUnusedClaims return a list of unused data claims and delete all backup claims not mapping
-// the backup or restore pod suffixes
+// listDataAndDeleteUnusedClaims return a list of unused data claims.
+// listDataAndDeleteUnusedClaims delete all backup claims not mapping
+// the backup or restore pod suffixes.
+// listDataAndDeleteUnusedClaims delete unused data claims not matching the galera claim spec.
 func (gc *defaultGaleraControl) listDataAndDeleteUnusedClaims(
 	galera *apigalera.Galera,
 	podSuffix []string,
@@ -1517,13 +1505,12 @@ func (gc *defaultGaleraControl) createOrUpdateServices(galera *apigalera.Galera,
 			}
 			status.ServiceReader = svcReaderName
 
-			if galera.Spec.Pod.Special != nil {
-				svcSpecialName, err := gc.serviceControl.CreateOrUpdateGaleraServiceSpecial(galera)
-				if err != nil {
-					return err
-				}
-				status.ServiceSpecial = svcSpecialName
+
+			svcSpecialName, err := gc.serviceControl.CreateOrUpdateGaleraServiceSpecial(galera)
+			if err != nil {
+				return err
 			}
+			status.ServiceSpecial = svcSpecialName
 
 			if galera.Spec.Pod.Metric != nil {
 				svcMonitorName, err := gc.serviceControl.CreateOrUpdateGaleraServiceMonitor(galera)

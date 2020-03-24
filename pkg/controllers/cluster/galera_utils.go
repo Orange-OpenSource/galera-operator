@@ -336,7 +336,6 @@ func newGaleraPod(galera *apigalera.Galera, revision, podName, role, state, addr
 
 	return pkggalera.NewGaleraPod(
 		&galera.Spec,
-		galera.Labels,
 		podName,
 		galera.Name,
 		galera.Namespace,
@@ -402,7 +401,7 @@ func newGaleraHeadlessService(galera *apigalera.Galera) *corev1.Service {
 
 // selectorForGalera returns a selector build with Galera provided labels , Galera.Name and Galera.Namespace
 func selectorForGalera(galera *apigalera.Galera) (labels.Selector, error) {
-	return pkggalera.SelectorForGalera(galera.Labels, galera.Name, galera.Namespace)
+	return pkggalera.SelectorForGalera(galera.Name, galera.Namespace)
 }
 
 // func claimLabelsForGalera returns a map with all labels needed for a Galera, it is used to patch labels with the

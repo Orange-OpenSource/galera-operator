@@ -23,12 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func PodLabelsForGalera(labels map[string]string, clusterName, clusterNamespace, role, revision, state string) map[string]string {
+func PodLabelsForGalera(clusterName, clusterNamespace, role, revision, state string) map[string]string {
 	l := make(map[string]string)
-
-	for label, value := range labels {
-		l[label] = value
-	}
 
 	l[apigalera.GaleraClusterName]      = clusterName
 	l[apigalera.GaleraClusterNamespace] = clusterNamespace
@@ -90,12 +86,8 @@ func BuildBackupClaimNameForGalera(podName string) string {
 	return buildName(podName, apigalera.BackupClaimPrefix)
 }
 
-func labelsForGalera(labels map[string]string, clusterName, clusterNamespace string) map[string]string {
+func labelsForGalera(clusterName, clusterNamespace string) map[string]string {
 	l := make(map[string]string)
-
-	for label, value := range labels {
-		l[label] = value
-	}
 
 	l[apigalera.GaleraClusterName]      = clusterName
 	l[apigalera.GaleraClusterNamespace] = clusterNamespace
@@ -138,8 +130,8 @@ func serviceSelectorForGalera(clusterName, clusterNamespace, role string) map[st
 	}
 }
 
-func SelectorForGalera(labels map[string]string ,clusterName, clusterNamespace string) (labels.Selector, error) {
-	return metav1.LabelSelectorAsSelector(metav1.SetAsLabelSelector(labelsForGalera(labels, clusterName, clusterNamespace)))
+func SelectorForGalera(clusterName, clusterNamespace string) (labels.Selector, error) {
+	return metav1.LabelSelectorAsSelector(metav1.SetAsLabelSelector(labelsForGalera(clusterName, clusterNamespace)))
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {

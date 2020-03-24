@@ -22,16 +22,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func NewGaleraPod(galspec *apigalera.GaleraSpec, labels map[string]string , name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state string,
+func NewGaleraPod(spec *apigalera.GaleraSpec, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state string,
 	init bool, credsMap map[string]string, owner metav1.OwnerReference) *corev1.Pod {
-	pod := newGaleraPod(galspec, labels, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state, init, credsMap)
-	applyPodTemplate(pod, galspec.Pod, role)
+	pod := newGaleraPod(spec, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state, init, credsMap)
+	applyPodTemplate(pod, spec, role)
 
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod
 }
 
-func newGaleraPod(galspec *apigalera.GaleraSpec, labels map[string]string, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state string,
+func newGaleraPod(galspec *apigalera.GaleraSpec, name, clusterName, clusterNamespace, role, addresses, bootstrapImage, backupImage, revision, state string,
 	init bool, credsMap map[string]string) *corev1.Pod {
 	bootstrap := bootstrapContainer(bootstrapImage, credsMap["user"], credsMap["password"], clusterName, name, addresses, state)
 	container := galeraContainer(galspec.Pod.Image, credsMap["user"], credsMap["password"], role)
@@ -39,12 +39,12 @@ func newGaleraPod(galspec *apigalera.GaleraSpec, labels map[string]string, name,
 	var cfgMapVolume corev1.Volume
 
 	if role == apigalera.RoleSpecial {
-		container.Env = appendGaleraEnv(galspec.Pod.Special.GaleraSpecialEnv, addresses, init)
+		container.Env = appendGaleraEnv(galspec.Special.GaleraSpecialEnv, addresses, init)
 
-		if galspec.Pod.Special.MycnfSpecialConfigMap == nil {
+		if galspec.Special.MycnfSpecialConfigMap == nil {
 			cfgMapVolume = configMapVolume(galspec.Pod.MycnfConfigMap)
 		} else {
-			cfgMapVolume = configMapVolume(galspec.Pod.Special.MycnfSpecialConfigMap)
+			cfgMapVolume = configMapVolume(galspec.Special.MycnfSpecialConfigMap)
 		}
 	} else {
 		container.Env = appendGaleraEnv(galspec.Pod.Env, addresses, init)
@@ -77,7 +77,7 @@ func newGaleraPod(galspec *apigalera.GaleraSpec, labels map[string]string, name,
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
-			Labels: PodLabelsForGalera(labels, clusterName, clusterNamespace, role, revision, state),
+			Labels: PodLabelsForGalera(clusterName, clusterNamespace, role, revision, state),
 		},
 		Spec: corev1.PodSpec{
 			InitContainers:               []corev1.Container{bootstrap},
@@ -430,7 +430,9 @@ func backupProbe() *corev1.Probe {
 	}
 }
 
-func applyPodTemplate(pod *corev1.Pod, podTemplate *apigalera.PodTemplate, role string) {
+func applyPodTemplate(pod *corev1.Pod, spec *apigalera.GaleraSpec, role string) {
+	podTemplate := spec.Pod
+
 	if podTemplate.Affinity != nil {
 		pod.Spec.Affinity = podTemplate.Affinity
 	}
@@ -446,10 +448,10 @@ func applyPodTemplate(pod *corev1.Pod, podTemplate *apigalera.PodTemplate, role 
 	if role != apigalera.RoleSpecial {
 		pod.Spec.Containers[0].Resources = podTemplate.Resources
 	} else {
-		if podTemplate.Special.SpecialResources == nil {
+		if spec.Special.SpecialResources == nil {
 			pod.Spec.Containers[0].Resources = podTemplate.Resources
 		} else {
-			pod.Spec.Containers[0].Resources = *podTemplate.Special.SpecialResources
+			pod.Spec.Containers[0].Resources = *spec.Special.SpecialResources
 		}
 	}
 

@@ -22,16 +22,16 @@ import (
 )
 
 func NewGaleraPodDisruptionBudget(galspec *apigalera.GaleraSpec, labels map[string]string, clusterName, clusterNamespace, pdbName string, maxUnavailable int, owner metav1.OwnerReference) *policyv1.PodDisruptionBudget {
-	pdb := newGaleraPodDisruptionBudget(galspec, labels, clusterName, clusterNamespace, pdbName, maxUnavailable)
+	pdb := newGaleraPodDisruptionBudget(labels, clusterName, clusterNamespace, pdbName, maxUnavailable)
 	addOwnerRefToObject(pdb.GetObjectMeta(), owner)
 
 	return pdb
 }
 
-func newGaleraPodDisruptionBudget(galspec *apigalera.GaleraSpec, labels map[string]string, clusterName, clusterNamespace, pdbName string, maxUnavailable int) *policyv1.PodDisruptionBudget {
+func newGaleraPodDisruptionBudget(galLabels map[string]string, clusterName, clusterNamespace, pdbName string, maxUnavailable int) *policyv1.PodDisruptionBudget {
 	i :=  intstr.FromInt(maxUnavailable)
 
-	labelsToMatch := labelsForGalera(labels, clusterName, clusterNamespace)
+	labelsToMatch := labelsForGalera(clusterName, clusterNamespace)
 	labelsToMatch[apigalera.GaleraStateLabel] = apigalera.StateCluster
 
 	labelSelector := metav1.SetAsLabelSelector(labelsToMatch)
@@ -46,8 +46,8 @@ func newGaleraPodDisruptionBudget(galspec *apigalera.GaleraSpec, labels map[stri
 
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: pdbName,
-			Labels: labelsForGalera(labels, clusterName, clusterNamespace),
+			Name:   pdbName,
+			Labels: galLabels,
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
 			MaxUnavailable: &i,

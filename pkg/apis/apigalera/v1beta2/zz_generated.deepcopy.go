@@ -115,7 +115,7 @@ func (in *GaleraBackup) DeepCopyObject() runtime.Object {
 func (in *GaleraBackupList) DeepCopyInto(out *GaleraBackupList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]GaleraBackup, len(*in))
@@ -208,7 +208,7 @@ func (in *GaleraCondition) DeepCopy() *GaleraCondition {
 func (in *GaleraList) DeepCopyInto(out *GaleraList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Galera, len(*in))
@@ -251,6 +251,11 @@ func (in *GaleraSpec) DeepCopyInto(out *GaleraSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.PersistentVolumeClaimSpec.DeepCopyInto(&out.PersistentVolumeClaimSpec)
+	if in.Special != nil {
+		in, out := &in.Special, &out.Special
+		*out = new(SpecialSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Restore != nil {
 		in, out := &in.Restore, &out.Restore
 		*out = new(RestoreSpec)
@@ -439,11 +444,6 @@ func (in *PodTemplate) DeepCopyInto(out *PodTemplate) {
 		in, out := &in.MycnfConfigMap, &out.MycnfConfigMap
 		*out = new(v1.LocalObjectReference)
 		**out = **in
-	}
-	if in.Special != nil {
-		in, out := &in.Special, &out.Special
-		*out = new(SpecialSpec)
-		(*in).DeepCopyInto(*out)
 	}
 	if in.Metric != nil {
 		in, out := &in.Metric, &out.Metric
@@ -644,7 +644,7 @@ func (in *UpgradeConfig) DeepCopyObject() runtime.Object {
 func (in *UpgradeConfigList) DeepCopyInto(out *UpgradeConfigList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]UpgradeConfig, len(*in))
@@ -727,7 +727,7 @@ func (in *UpgradeRule) DeepCopyObject() runtime.Object {
 func (in *UpgradeRuleList) DeepCopyInto(out *UpgradeRuleList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]UpgradeRule, len(*in))

@@ -69,12 +69,16 @@ type GaleraSpec struct {
 	// This field is mandatory
 	PersistentVolumeClaimSpec corev1.PersistentVolumeClaimSpec `json:"persistentVolumeClaimSpec"`
 
-	// Restore is the spec to describe data and method used to build a Galera cluster from a backup
-	Restore *RestoreSpec `json:"restore, omitempty"`
+	// Special pod for dedicated purpose like batch integration
+	// +optional
+	Special *SpecialSpec `json:"special,omitempty"`
 
 	// Galera cluster TLS configuration
 	// +optional
 	//TLS TLSPolicy `json:"TLS,omitempty"`
+
+	// Restore is the spec to describe data and method used to build a Galera cluster from a backup
+	Restore *RestoreSpec `json:"restore, omitempty"`
 
 	// RevisionHistoryLimit is the maximum number of revisions that will
 	// be maintained in the Galera's revision history. The revision history
@@ -125,10 +129,6 @@ type PodTemplate struct {
 	// MycnfConfigMap used to identify a ConfigMap providing a my.cnf configuration file used by Galera cluster
 	MycnfConfigMap *corev1.LocalObjectReference `json:"mycnfConfigMap"`
 
-	// Special pod for dedicated purpose like batch integration
-	// +optional
-	Special *SpecialSpec `json:"special,omitempty"`
-
 	// Metric container used for metric and/or monitoring purpose
 	// +optional
 	Metric *MetricSpec `json:"metric,omitempty"`
@@ -145,24 +145,7 @@ type PodTemplate struct {
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 }
 
-type SpecialSpec struct {
-	// SpecialResources is the resource requirements for the Galera containers.
-	// If not specified, Resources from PodTemplate will be used.
-	// This field cannot be updated once the cluster is created.
-	// +optional
-	SpecialResources *corev1.ResourceRequirements `json:"specialResources,omitempty"`
 
-	// List of environment variables to set in the Galera Special container.
-	// This field cannot be updated.
-	// +optional
-	GaleraSpecialEnv []corev1.EnvVar `json:"specialEnv,omitempty"`
-
-	// MycnfSpecialConfigMap used to identify a ConfigMap providing a my.cnf configuration file used by Galera cluster
-	// If not specified, MycnfConfigMap from PodTemplate will be used.
-	// This field cannot be updated once the cluster is created.
-	// +optional
-	MycnfSpecialConfigMap *corev1.LocalObjectReference `json:"mycnfSpecialConfigMap,omitempty"`
-}
 
 type MetricSpec struct {
 	// Image used by a sidecar container used for metrics and monitoring purposes.
@@ -184,6 +167,25 @@ type MetricSpec struct {
 	// This field cannot be updated once the cluster is created.
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+}
+
+type SpecialSpec struct {
+	// SpecialResources is the resource requirements for the Galera containers.
+	// If not specified, Resources from PodTemplate will be used.
+	// This field cannot be updated once the cluster is created.
+	// +optional
+	SpecialResources *corev1.ResourceRequirements `json:"specialResources,omitempty"`
+
+	// List of environment variables to set in the Galera Special container.
+	// This field cannot be updated.
+	// +optional
+	GaleraSpecialEnv []corev1.EnvVar `json:"specialEnv,omitempty"`
+
+	// MycnfSpecialConfigMap used to identify a ConfigMap providing a my.cnf configuration file used by Galera cluster
+	// If not specified, MycnfConfigMap from PodTemplate will be used.
+	// This field cannot be updated once the cluster is created.
+	// +optional
+	MycnfSpecialConfigMap *corev1.LocalObjectReference `json:"mycnfSpecialConfigMap,omitempty"`
 }
 
 // Restore is used to manage a restoration from a backup of a Galera cluster.
