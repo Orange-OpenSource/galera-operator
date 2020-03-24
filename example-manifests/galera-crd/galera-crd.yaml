@@ -45,14 +45,21 @@ spec:
     type: date
     JSONPath: .metadata.creationTimestamp  
     priority: 0
+  - name: Phase
+    type: string
+    JSONPath: .status.phase
   - name: Image
     type: string
-    description: Image used by the current revision
+    description: Desired image
     JSONPath: .spec.pod.image
   - name: MetricImage
     type: string
-    description: Metric Image used by the current revision
+    description: Desired metric image
     JSONPath: .spec.pod.metric.image
+  - name: Special
+    type: string
+    description: Special pod
+    JSONPath: .status.members.special
   validation:
     openAPIV3Schema:
     # https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md
@@ -84,8 +91,6 @@ spec:
                   type: string
                 sidecarImage:
                   type: string
-                special:
-                  type: object
                 metric:
                   type: object
                 priorityClassName:
@@ -93,6 +98,8 @@ spec:
                 securityContext:
                   type: object
             persistentVolumeClaimSpec:
+              type: object
+            special:
               type: object
 #            restore:
 #              type: object

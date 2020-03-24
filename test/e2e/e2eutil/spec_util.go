@@ -67,7 +67,7 @@ func AddingSpecial(galera *apigalera.Galera) *apigalera.Galera {
 		GaleraSpecialEnv:      nil,
 		MycnfSpecialConfigMap: nil,
 	}
-	galera.Spec.Pod.Special = &special
+	galera.Spec.Special = &special
 	return galera
 }
 

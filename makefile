@@ -9,7 +9,7 @@ TAG=`git describe --tags`
 DATE=`date +%FT%T%z`
 GITSHA=`git rev-parse HEAD`
 PREFIX=sebs42
-RELEASE_K8S=release-1.12
+CODE_GEN=v0.15.9
 
 # Testing
 TESTING_NAMESPACE=default
@@ -49,7 +49,7 @@ clean:
 	docker rmi -f "$(PREFIX)/$(APP_NAME):$(TAG)" || true
 
 clonegen:
-	git clone -b $(RELEASE_K8S) https://github.com/kubernetes/code-generator ./vendor/k8s.io/code-generator
+	git clone -b $(CODE_GEN) https://github.com/kubernetes/code-generator ./vendor/k8s.io/code-generator
 
 codegen: clean
 	./hack/update-codegen.sh

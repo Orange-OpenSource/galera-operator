@@ -87,7 +87,7 @@ func WaitUntilSizeReached(t *testing.T, galeraClient versioned.Interface, size, 
 		}
 
 		special = 0
-		if galera.Spec.Pod.Special != nil {
+		if galera.Spec.Special != nil {
 			if currCluster.Status.Members.Special != "" {
 				special = 1
 			}
