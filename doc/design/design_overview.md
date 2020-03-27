@@ -26,29 +26,29 @@ Reconciliation is done that way:
 
 When a cluster upgrade by changing MariaDB version and keeping the same same volume requirements , additional operations are performed.
 
-![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase1.png)
+![galera before_upgrade](https://raw.githubusercontent.com/Orange-OpenSource/galera-operator/master/doc/images/upgrade-phase1.png)
 
 1. Delete a pod and keep the volume claim
 
-![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase2.png)
+![galera before_upgrade](https://raw.githubusercontent.com/Orange-OpenSource/galera-operator/master/doc/images/upgrade-phase2.png)
 
 2. Wait the pod to be deleted
 
-![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase3.png)
+![galera before_upgrade](https://raw.githubusercontent.com/Orange-OpenSource/galera-operator/master/doc/images/upgrade-phase3.png)
 
 3. Start a new pod with the new revision. As pod and volume claim are not in the same revision, start the pod in a standalone mode, ie the pod is not joining the Galera cluster
 4. Run *MYSQL_UPGRADE* on the standalone pod,
 
-![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase4.png)
+![galera before_upgrade](https://raw.githubusercontent.com/Orange-OpenSource/galera-operator/master/doc/images/upgrade-phase4.png)
  
 5. delete the pod
 6. patch the volume claim with the new revision
 
-![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase5.png)
+![galera before_upgrade](https://raw.githubusercontent.com/Orange-OpenSource/galera-operator/master/doc/images/upgrade-phase5.png)
 
 7. Start a new pod reusing the previous volume claim, as the next revision is used for the pod and the volume claim, join the Galera cluster
 
-![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase6.png)
+![galera before_upgrade](https://raw.githubusercontent.com/Orange-OpenSource/galera-operator/master/doc/images/upgrade-phase6.png)
 
 
 ## Galera cluster backup
@@ -61,7 +61,7 @@ When a Galera Backup resource is created, the backup controller part of the oper
 
 Restoration is done using a Galera resource telling where to find a backup to restore.
 
-![galera restore](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/restore.png)
+![galera restore](https://raw.githubusercontent.com/Orange-OpenSource/galera-operator/master/doc/images/restore.png)
 
 
 All pods are restored in parallel, each pod is in standalone state and copy data using a backup container. Once the copy is done, pods are deleted and the cluster is rebuild pod by pod using the existing persistent volume containing the data (they are not deleted).
