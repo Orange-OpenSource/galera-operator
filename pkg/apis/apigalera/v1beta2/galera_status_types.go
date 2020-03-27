@@ -59,8 +59,8 @@ const (
 
 // GaleraStatus is the status for a Galera resource
 type GaleraStatus struct {
-	// observedGeneration is the most recent generation observed for this StatefulSet. It corresponds to the
-	// StatefulSet's generation, which is updated on mutation by the API Server.
+	// observedGeneration is the most recent generation observed for this Galera. It corresponds to the
+	// Galera's generation, which is updated on mutation by the API Server.
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration"`
 

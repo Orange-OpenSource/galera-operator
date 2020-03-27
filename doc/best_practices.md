@@ -8,11 +8,11 @@ To run galera cluster at large-scale, it is important to assign galera pods to n
 
 Galera clusters can use any provided storage class but it is **highly** recommended to use local storage using [local static provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) for performances and be cost effective. RAID are not mandatory and you can use simple disk to reduce cost. Galera Operator brings you fail-over and you shall remove it from infrastructure requirements. Galera Operator is designed to provide high availability through software.
 
-About disk, you can dedicated a disk for high performance instead of partitioning the disk and sharing the iops. Also, be aware of the constraints your disk controller when designing you Kubernetes cluster.
+About disk, you can dedicated a disk for high performance instead of partitioning the disk and sharing the iops. Also, be aware of your disk controller constraints when designing your Kubernetes cluster.
 
 ### Assign to nodes with desired resources
 
-Kubernetes nodes can be attached with lables. Users can [assign pods to nodes with given labels](http://kubernetes.io/docs/user-guide/node-selection/). Similarly for the galera-operator, users can specify `Node Selector` in the pod field, parts of the spec field, to select nodes for galera pods. For example, users can lable a set of nodes with SSD with label `disk="SSD"`. To assign galera pods to these nodes, users can specify `"disk"="SSD"` node selector in the cluster spec.
+Kubernetes nodes can be attached with labels. Users can [assign pods to nodes with given labels](http://kubernetes.io/docs/user-guide/node-selection/). Similarly for the galera-operator, users can specify `Node Selector` in the pod field, parts of the spec field, to select nodes for galera pods. For example, users can label a set of nodes with SSD with label `disk="SSD"`. To assign galera pods to these nodes, users can specify `"disk"="SSD"` node selector in the cluster spec.
 
 ### Assign to dedicated node
 

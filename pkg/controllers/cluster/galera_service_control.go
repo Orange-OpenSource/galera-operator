@@ -27,24 +27,24 @@ import (
 // GaleraServiceControlInterface defines the interface that GaleraController uses to create, update, and delete
 // Headless Service used by Galera clusters. It is implemented as an interface to provide for testing fakes.
 type GaleraServiceControlInterface interface {
-	// CreateOrUpdateGaleraServiceWriter create or update a ClusterIP Service used to read/write.
+	// CreateOrUpdateGaleraServiceWriter creates or updates a ClusterIP Service used to read/write.
 	// If the returned error is nil the Service have been created.
 	CreateOrUpdateGaleraServiceWriter(galera *apigalera.Galera) (string, error)
-	// CreateOrUpdateGaleraServiceWriterBackup create or update a ClusterIP Service used to read/write.
+	// CreateOrUpdateGaleraServiceWriterBackup creates or updates a ClusterIP Service used to read/write.
 	// If the returned error is nil the Service have been created.
 	CreateOrUpdateGaleraServiceWriterBackup(galera *apigalera.Galera) (string, error)
-	// CreateOrUpdateGaleraServiceReader create or update a ClusterIP Service used to read.
+	// CreateOrUpdateGaleraServiceReader creates or updates a ClusterIP Service used to read.
 	// If the returned error is nil the Service have been created.
 	CreateOrUpdateGaleraServiceReader(galera *apigalera.Galera) (string, error)
-	// CreateOrUpdateGaleraServiceSpecial create, delete or update a ClusterIP Service used to reach a special member
+	// CreateOrUpdateGaleraServiceSpecial creates, deletes or updates a ClusterIP Service used to reach a special member
 	// of the galera cluster.
 	// If the returned error is nil the Service have been created.
 	CreateOrUpdateGaleraServiceSpecial(galera *apigalera.Galera) (string, error)
-	// CreateOrUpdateGaleraServiceMonitor create or update a ClusterIP Service used to reach monitor agents.
+	// CreateOrUpdateGaleraServiceMonitor creates or updates a ClusterIP Service used to reach monitor agents.
 	// This service is very useful combined with servicemonitor and prometheus operator
 	// If the returned error is nil the Service have been created.
 	CreateOrUpdateGaleraServiceMonitor(galera *apigalera.Galera) (string, error)
-	// CreateOrUpdateGaleraServiceInternal create or update a Headless ClusterIP Service used between
+	// CreateOrUpdateGaleraServiceInternal creates or updates a Headless ClusterIP Service used between
 	// Galera nodes to synchronise
 	// If the returned error is nil the Service have been created.
 	CreateOrUpdateGaleraServiceInternal(galera *apigalera.Galera) (string, error)

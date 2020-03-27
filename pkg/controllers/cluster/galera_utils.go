@@ -504,13 +504,49 @@ func newNextRevision(revisions []*appsv1.ControllerRevision) int64 {
 }
 
 // completeRollingUpdate completes a rolling update when all of galera's replica Pods have been updated
-// to the updateRevision. status's currentRevision is galera to updateRevision and its' updateRevision
-// is galera to the empty string. status's currentReplicas is set to updateReplicas and its updateReplicas
+// to the updateRevision. status's currentRevision is set to nextRevision and its' updateRevision
+// is set to the empty string. status's currentReplicas is set to updateReplicas and its nextReplicas
 // are set to 0.
-func completeRollingUpdate(status *apigalera.GaleraStatus) {
+func completeRollingUpdate(galera *apigalera.Galera, status *apigalera.GaleraStatus) {
 	if 	status.NextReplicas == status.Replicas &&
-		int32(len(status.Members.Ready)) == status.Replicas {
+		int32(len(status.Members.Ready)) == status.Replicas &&
+		*galera.Spec.Replicas == status.Replicas {
+
+			logrus.Infof("-------------------- CompleteRollingUpdate ------------------")
+			logrus.Infof("status.NextReplicas : %d", status.NextReplicas)
+			logrus.Infof("status.Replicas : %d", status.Replicas)
+			logrus.Infof( "Nb mb ready : %d", len(status.Members.Ready))
+
+			logrus.Infof("status : %+v", status)
+
 			status.CurrentReplicas = status.NextReplicas
 			status.CurrentRevision = status.NextRevision
+			status.NextReplicas = 0
+			status.NextRevision = ""
 	}
+}
+
+/*
+func completeRollingUpdate(set *apps.StatefulSet, status *apps.StatefulSetStatus) {
+	if set.Spec.UpdateStrategy.Type == apps.RollingUpdateStatefulSetStrategyType &&
+		status.UpdatedReplicas == status.Replicas &&
+		status.ReadyReplicas == status.Replicas {
+		status.CurrentReplicas = status.UpdatedReplicas
+		status.CurrentRevision = status.UpdateRevision
+	}
+}
+ */
+
+// inconsistentStatus returns true if the ObservedGeneration of status is greater than set's
+// Generation or if any of the status's fields do not match those of set's status.
+func inconsistentStatus(galera *apigalera.Galera, status *apigalera.GaleraStatus) bool {
+	return status.ObservedGeneration > galera.Status.ObservedGeneration ||
+		status.Replicas != galera.Status.Replicas ||
+		status.CurrentReplicas != galera.Status.CurrentReplicas ||
+		len(status.Members.Ready) != len(galera.Status.Members.Ready) ||
+		len(status.Members.Unready) != len(galera.Status.Members.Unready) ||
+		status.Members.Special != galera.Status.Members.Special ||
+		status.NextReplicas != galera.Status.NextReplicas ||
+		status.CurrentRevision != galera.Status.CurrentRevision ||
+		status.NextRevision != galera.Status.NextRevision
 }

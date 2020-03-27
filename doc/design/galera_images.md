@@ -61,4 +61,6 @@ _main() {
 
 A new env variable is used (CLUSTER_INIT). The prupose is to let the first node being initialized. Other nodes will use a galera replication at the startup sequence.
 
+Do not forget to use the same rights for the docker-entrypoint.sh script : `chmod 775 docker-entrypoint.sh`
+
 

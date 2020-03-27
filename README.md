@@ -15,16 +15,22 @@ Today, Galera Operator can:
 * Rolling upgrade
 * Backup and Restore
 
+Please read the full documentation in `./doc/user` to view all features.
+
 ## 30 000 ft view
 
-![galera operation design overview](https://raw.githubusercontente.com/ /galera-operator/master/doc/overview.png)
+![galera operation design overview](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/overview.png)
 
 ## Requirements
 * Kubernetes 1.12+
 * MariaDB 10.1.23 for Backup and Restore, only *mariabackup* is currently implemented
 * S3 storage for Backup and Restore, S3 is currently the only object storage implemented
 
+Note: Operator image provided for example purpose are build for Kubernetes 1.15+. If you want to use it on an older Kubernetes you need to rebuild the image
+
 ## Features
+
+![galera operation design overview](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/overview.png)
 
 ### Deploy Galera Operator
 
@@ -68,6 +74,20 @@ Finally if [Prometheus Operator](https://github.com/coreos/prometheus-operator) 
 ```bash
 $ kubectl apply -f  ./example-manifests/galera-monitoring/operator-monitor.yaml
 ```
+
+### Managed Galera Cluster
+
+A galera cluster is made of several nodes, each galera node is mapped on a kubernetes pod (be carefull between galera nodes and kubernetes nodes, it is not the same thing). All galera nodes are not the same, labels are set to specify which pod is the galera node for read, write of be the backup.
+
+![managed galera cluster](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/galera.png)
+
+We can find on each pod an initcontainer called bootstrap and a container called galera. Metric container is optional and is used to have metrics collected by external system (as prometheus). On each pod we find a persistant volume claim mapping /var/lib/mysql.
+
+The backup pod is not the same as other pods, because there is an extra container (backup) and an extra persistant volume claim. Backup container is designed to expose an API to manage restore and backup operation from the operator. This API is missing today as all operations are done through cli.
+
+Special pod is used for adding large amount of data on existing cluster (like adding tables). It is designed to be used for a limited time, adding or removing this pod does not change the controller revision used to follow change during the galera cluster lifecycle.
+
+For a deeper undestanding of galera cluster object, please read `./doc/design/design_overview.md`
 
 ### Create Galera Cluster
 
@@ -124,7 +144,6 @@ galera-backup                 14m             gal-galera-backup.20200128172501.s
 $ kubectl apply -f ./example-manifests/galera-restore/restore-galera.yaml
 ```
 
-
 ### Collect Metrics    
 
 If Prometheus Operator is deployed, collect the metrics by deploying the service monitor:
@@ -140,13 +159,15 @@ Kubernetes version: 1.13+
 
 This project uses Go modules to manage its dependencies, so feel free to work from outside of your `GOPATH`. However, if you'd like to continue to work from within your `GOPATH`, please export `GO111MODULE=on`.
 
+k8s.io/kubernetes is not primarily intended to be consumed as a module. Only the published subcomponents are (and go get works properly with those). We need to add require directives for matching versions of all of the subcomponents, rather than using go get. Please read carefully [Installing client-go](https://github.com/kubernetes/client-go/blob/master/INSTALL.md#add-client-go-as-a-dependency%C2%A0for) and have a look to go.mod. To help you find the matchind dependency you can also use `./hack/dependencies.sh`
+
 This operator use the kubernetes code-generator for:
   * clientset: used to manipulate objects defined in the CRD (GaleraCluster)
   * informers: cache for registering to events on objects defined in the CRD
   * listers
   * deep copy
 
-Go modules are used, used the go.mod and go.sum provided or generate your own with go mod.
+To get code-generator, you need to explicitly git clone the branch matching the kubernetes version to `./vendor/k8s.io/code-generator`
   
 The clientset can be generated using the ./hack/update-codegen.sh script or using the makefile codegen.
 
@@ -163,5 +184,7 @@ The following code-generators are used:
     lister-gen - creates listers for CustomResources which offer a read-only caching layer for GET and LIST requests.
 
 Changes should not be made to these files manually, and when creating your own controller based off of this implementation you should not copy these files and instead run the update-codegen script to generate your own.
+
+
 
 

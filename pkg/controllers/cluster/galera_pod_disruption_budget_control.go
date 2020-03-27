@@ -27,7 +27,7 @@ import (
 // GaleraPodDisruptionBudgetControlInterface defines the interface that GaleraController uses to create, update,
 // and delete PodDisruptionBudget used by Galera clusters. It is implemented as an interface to provide for testing fakes.
 type GaleraPodDisruptionBudgetControlInterface interface {
-	// CreateOrUpdateGaleraPDB create and update a PodDisruptionBudget for a Galera.
+	// CreateOrUpdateGaleraPDB creates and updates a PodDisruptionBudget for a Galera.
 	// If the returned error is nil the PodDisruptionBudget have been created.
 	CreateOrUpdateGaleraPDB(galera *apigalera.Galera) (string, error)
 }

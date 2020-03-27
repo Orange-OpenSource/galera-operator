@@ -2,7 +2,7 @@
 
 ## Galera cluster creation
 
-When a Galera resource is created, Kubernetes store this resource and an `add` event for this resource is created. Galera Operator just check through the Kubernetes mecanism is a Galera resource  is `added`, `removed` or `modified`. For all this events, Galera Operator processes it through the same reconcile loop. First Kubernetes pod is created. Galera Operator checks `pod` and `persisten volume claim` resources the same way. So When the first pod is created, Galera Operator sees a new pod, checks is this pod belong to a Galera cluster and if so, reenter the main reconcile loop. This is how a a Galera Cluster is created,  adding pod by pod Galera nodes to the Galera cluster. 
+When a Galera resource is created, Kubernetes stores this resource and an `add` event for this resource is created. Galera Operator just check if a Galera resource is `added`, `removed` or `modified`. For all this events, Galera Operator processes it through the same reconcile loop. First Kubernetes pod is created. Galera Operator checks `pod` and `persisten volume claim` resources the same way. So When the first pod is created, Galera Operator sees a new pod, checks if this pod belong to a Galera cluster and if so, reenter the main reconcile loop. This is how a a Galera Cluster is created,  adding pod by pod Galera nodes to the Galera cluster. 
 
 ## Galera membership reconciliation
 
@@ -19,17 +19,37 @@ Reconciliation is done that way:
     3. If pods are not ready or terminating, we wait until they are in a final state : `failed`, `terminated` or `ready`
     4. Create new Pod if needed, using the next revision
     5. If no pod need to be created, check if there are not too much pods and delete them one by one only if there data are already copied to other memeber of the Galera cluster
-    6. Delete running pod for upgrade, can also delete pvc if new volume requirments are specified
+    6. Delete running pod for upgrade, can also delete pvc if new volume requirments is specified
 
 
 ## Galera cluster upgrade
 
 When a cluster upgrade by changing MariaDB version and keeping the same same volume requirements , additional operations are performed.
 
-    1 Delete a pod and keep the volume claim
-    2 Start a new pod, as pod and volume claim are not in the same version, start the pod in a standalone mode, ie the pod is not joining the Galera cluster
-    3 Run *MYSQL_UPGRADE* on the standalone pod, patch the volume claim to indicate the new revision used and delete the pod
-    4 Start a new pod reusing the previous volume claim, as the next revision is used for the pod and the volume claim, join the Galera cluster
+![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase1.png)
+
+1. Delete a pod and keep the volume claim
+
+![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase2.png)
+
+2. Wait the pod to be deleted
+
+![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase3.png)
+
+3. Start a new pod with the new revision. As pod and volume claim are not in the same revision, start the pod in a standalone mode, ie the pod is not joining the Galera cluster
+4. Run *MYSQL_UPGRADE* on the standalone pod,
+
+![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase4.png)
+ 
+5. delete the pod
+6. patch the volume claim with the new revision
+
+![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase5.png)
+
+7. Start a new pod reusing the previous volume claim, as the next revision is used for the pod and the volume claim, join the Galera cluster
+
+![galera before_upgrade](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/upgrade-phase6.png)
+
 
 ## Galera cluster backup
 
@@ -40,6 +60,9 @@ When a Galera Backup resource is created, the backup controller part of the oper
 ## Galera cluster restoration
 
 Restoration is done using a Galera resource telling where to find a backup to restore.
+
+![galera restore](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/restore.png)
+
 
 All pods are restored in parallel, each pod is in standalone state and copy data using a backup container. Once the copy is done, pods are deleted and the cluster is rebuild pod by pod using the existing persistent volume containing the data (they are not deleted).
 

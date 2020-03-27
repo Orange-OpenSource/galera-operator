@@ -23,9 +23,11 @@ The dates below should not be considered authoritative, but rather indicative of
 ### 2020 S2
 
 - Machine Learning
-  - build on top of this operator a system to manage galera clusters, users will not have to provide any resource requirements, sizing will be operated by the system based on observation and  datas collected from managed cluster. Upgrading will be automated and scheduled when databases are less used. Upgrade will be also validated by checking the client calls (version checking)
-  - multi-operators running on different Kubernetes clusters
+  - build on top of this operator a system to manage galera clusters, users will not have to provide any resource requirements, sizing will be operated by the system based on observations and datas collected from managed cluster. Upgrading will be automated and scheduled when databases are less used. Upgrade will be also validated by checking the client calls (version checking)
+
+- Multi-operators running on different Kubernetes clusters (master-slave with 2 galera clusters)
 
 - API for galera cluster operations
+
 
   

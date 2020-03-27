@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 )
-/*
+
 func TestCreateGaleraWithSpecial(t *testing.T) {
 	galeraImage := os.Getenv(envImage)
 
@@ -79,7 +79,7 @@ func TestCreateGaleraWithSpecial(t *testing.T) {
 		t.Fatalf("failed to check data : %s", err)
 	}
 }
-*/
+
 func TestUpgradeGaleraWithSpecial(t *testing.T) {
 	galeraImage := os.Getenv(envImage)
 

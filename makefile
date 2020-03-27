@@ -63,5 +63,5 @@ inite2etest:
 	./test/init_e2etest.sh
 
 e2etest: inite2etest
-	go test -v ./test/e2e --kubeconfig=/Users/seb/.kube/config --operator-image=$(PREFIX)/$(APP_NAME):$(TAG) --namespace=$(TESTING_NAMESPACE)
+	go test -d -v ./test/e2e --kubeconfig=/Users/seb/.kube/config --operator-image=$(PREFIX)/$(APP_NAME):$(TAG) --namespace=$(TESTING_NAMESPACE)
 
