@@ -79,7 +79,7 @@ $ kubectl apply -f  ./example-manifests/galera-monitoring/operator-monitor.yaml
 
 A galera cluster is made of several nodes, each galera node is mapped on a kubernetes pod (be carefull between galera nodes and kubernetes nodes, it is not the same thing). All galera nodes are not the same, labels are set to specify which pod is the galera node for read, write of be the backup.
 
-![managed galera cluster](https://raw.githubusercontente.com/orange-opensource/galera-operator/master/doc/images/galera.png)
+![managed galera cluster](https://raw.githubusercontent.com/Orange-OpenSource/galera-operator/master/doc/images/galera.png)
 
 We can find on each pod an initcontainer called bootstrap and a container called galera. Metric container is optional and is used to have metrics collected by external system (as prometheus). On each pod we find a persistant volume claim mapping /var/lib/mysql.
 
