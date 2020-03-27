@@ -10,6 +10,15 @@ DATE=`date +%FT%T%z`
 GITSHA=`git rev-parse HEAD`
 PREFIX=
 
+# Testing
+GB_S3Login=
+GB_S3Password=
+GB_S3Endpoint=
+GB_S3Bucket=
+GB_S3BackupName=
+GB_Backup=
+GB_Restore=
+
 # Name of app/binary
 APP_NAME=galera-backup
 
