@@ -20,7 +20,6 @@ import (
 	"fmt"
 	apigalera "galera-operator/pkg/apis/apigalera/v1beta2"
 	pkggalera "galera-operator/pkg/galera"
-	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1beta1"
@@ -426,13 +425,11 @@ func Match(galera *apigalera.Galera, history *appsv1.ControllerRevision) (bool, 
 func getPatch(galera *apigalera.Galera) ([]byte, error) {
 	str, err := runtime.Encode(patchCodec, galera)
 	if err != nil {
-		logrus.Infof("3")
 		return nil, err
 	}
 	var raw map[string]interface{}
 	err = json.Unmarshal([]byte(str), &raw)
 	if err != nil {
-		logrus.Infof("4")
 		return nil, err
 	}
 	objCopy := make(map[string]interface{})
@@ -511,31 +508,12 @@ func completeRollingUpdate(galera *apigalera.Galera, status *apigalera.GaleraSta
 	if 	status.NextReplicas == status.Replicas &&
 		int32(len(status.Members.Ready)) == status.Replicas &&
 		*galera.Spec.Replicas == status.Replicas {
-
-			logrus.Infof("-------------------- CompleteRollingUpdate ------------------")
-			logrus.Infof("status.NextReplicas : %d", status.NextReplicas)
-			logrus.Infof("status.Replicas : %d", status.Replicas)
-			logrus.Infof( "Nb mb ready : %d", len(status.Members.Ready))
-
-			logrus.Infof("status : %+v", status)
-
 			status.CurrentReplicas = status.NextReplicas
 			status.CurrentRevision = status.NextRevision
 			status.NextReplicas = 0
 			status.NextRevision = ""
 	}
 }
-
-/*
-func completeRollingUpdate(set *apps.StatefulSet, status *apps.StatefulSetStatus) {
-	if set.Spec.UpdateStrategy.Type == apps.RollingUpdateStatefulSetStrategyType &&
-		status.UpdatedReplicas == status.Replicas &&
-		status.ReadyReplicas == status.Replicas {
-		status.CurrentReplicas = status.UpdatedReplicas
-		status.CurrentRevision = status.UpdateRevision
-	}
-}
- */
 
 // inconsistentStatus returns true if the ObservedGeneration of status is greater than set's
 // Generation or if any of the status's fields do not match those of set's status.

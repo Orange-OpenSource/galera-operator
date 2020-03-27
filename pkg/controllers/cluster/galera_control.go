@@ -104,20 +104,11 @@ func (gc *defaultGaleraControl) SyncGalera(galera *apigalera.Galera, pods []*cor
 	}
 	history.SortControllerRevisions(revisions)
 
-
-	for i, rev := range revisions {
-		logrus.Infof("RRRRRRRRRRRRRRRR rev %d : %s", i, rev.Name)
-	}
-
 	// get the current, and update revisions
 	currentRevision, nextRevision, collisionCount, err := gc.getGaleraRevisions(galera, revisions)
 	if err != nil {
 		return err
 	}
-
-	logrus.Infof("currentRevision : %s", currentRevision.Name)
-	logrus.Infof("nextRevision : %s", nextRevision.Name)
-
 
 	// get the current and next revisions of the galera
 	currentGalera, err := ApplyRevision(galera, currentRevision)
@@ -1295,9 +1286,6 @@ func (gc *defaultGaleraControl) manageSpecialNode(
 	if specialPod == nil {
 		podName := createUniquePodName(galera.Name, podSuffix, claimSuffix)
 
-
-		logrus.Infof("%%%%%%%%%%%%%% CREATING SPECIAL %s", podName)
-
 		state := apigalera.StateCluster
 		exist, claimRev, err := gc.podControl.GetClaimRevision(galera.Namespace, podName)
 		if err != nil {
@@ -1367,21 +1355,13 @@ func (gc *defaultGaleraControl) manageSpecialNode(
 
 		if podRev != claimRev {
 			specialPod = specialPod.DeepCopy()
-
-			logrus.Infof("%%%%%%%%%%%% RUN UPGRADE")
-
 			if err := gc.podControl.RunUpgradeGalera(galera, specialPod, mapCredGalera["user"], mapCredGalera["password"]); err != nil {
 				return err
 			}
-
-			logrus.Infof("%%%%%%%%%%%% DELETE POD")
-
 			// Need to delete pod first, if operator crashes, rerun mysql upgrade but do not let a pod in standalone state
 			if err := gc.podControl.ForceDeletePod(galera, specialPod); err != nil {
 				return err
 			}
-
-			logrus.Infof("%%%%%%%%%%%% PATCH CLAIM")
 
 			return gc.podControl.PatchClaimLabels(galera, specialPod, podRev)
 		}
@@ -1480,7 +1460,6 @@ func (gc *defaultGaleraControl) deletePodForUpgrade(
 	defaultSCName string) (bool, error) {
 
 	if currentRevision == nextRevision {
-		logrus.Infof("SEB : |||||||||||||||||||||||||||| next = current ||||||||||||||||||||||||")
 		return false, nil
 	}
 
@@ -1496,13 +1475,6 @@ func (gc *defaultGaleraControl) deletePodForUpgrade(
 
 		// delete the pod if it not already terminating and does not match the next revision
 		if getPodRevision(pod) != nextRevision && !isTerminating(pod) {
-			/*
-			if !status.IsUpgrading() {
-				status.SetUpgradingCondition(nextRevision)
-				clustersModified.Inc()
-			}
-			*/
-
 			gc.logger.Infof("Galera %s/%s terminating Pod %s for upgrade",
 				galera.Namespace,
 				galera.Name,
@@ -1512,12 +1484,6 @@ func (gc *defaultGaleraControl) deletePodForUpgrade(
 			return true, err
 		}
 	}
-
-	/*
-	if status.IsUpgrading() {
-		status.ClearCondition(apigalera.GaleraConditionUpgrading)
-	}
-	*/
 
 	return false, nil
 }
@@ -1595,8 +1561,6 @@ func (gc *defaultGaleraControl) updateGaleraStatus(
 	if !inconsistentStatus(galera, status) {
 		return nil
 	}
-
-	logrus.Infof("=========================== Upgrading Status =================================")
 
 	// copy galera and update its status
 	galera = galera.DeepCopy()

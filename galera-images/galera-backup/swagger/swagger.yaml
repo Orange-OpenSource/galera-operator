@@ -1,0 +1,147 @@
+swagger: "2.0"
+info:
+  title: Galera Backup Tool
+  version: 1.0.0
+  description: >-
+    This is a backup server used for galera-operator project. You can find out
+    more about galera-operator at [https://github.com/orange-opensource/galera-operator](https://github.com/orange-opensource/galera-operator)
+  termsOfService: "https://github.com/orange-opensource/galera-operator"
+  license:
+    name: Apache 2.0
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+externalDocs:
+  description: Find out more about galera-operator
+  url: 'https://github.com/orange-opensource/galera-operator'
+schemes:
+  - http
+paths:
+  /s3:
+    post:
+      summary: "Add a new backup to the provided S3 bucket"
+      description: "backup to S3 storage"
+      operationId: "addS3Backup"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: "s3"
+          in: "body"
+          description: "backup location and credentials"
+          required: true
+          schema:
+            $ref: "#/definitions/s3"
+      responses:
+        200:
+          description: "backup scheduled"
+          schema:
+            $ref: "#/definitions/Response"
+        default:
+          description: "default ko response"
+          schema:
+            $ref: "#/definitions/Response"
+    get:
+      summary: "Copy an existing backup from the provided S3 bucket"
+      description: "restore from S3 storage"
+      operationId: "getS3Backup"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: "s3"
+          in: "body"
+          description: "backup location and credentials"
+          required: true
+          schema:
+            $ref: "#/definitions/s3"
+      responses:
+        200:
+          description: "restore scheduled"
+          schema:
+            $ref: "#/definitions/Response"
+        default:
+          description: "default ko response"
+          schema:
+            $ref: "#/definitions/Response"
+  /state/{name}:
+    get:
+      summary: "Check the state of the provided backup or restore"
+      operationId: "getStateByName"
+      produces:
+        - application/json
+      parameters:
+        - name: name
+          in: path
+          description: "Name of a backup or restore operation"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "running/completed or failed backup/restore"
+          schema:
+            $ref: "#/definitions/Response"
+        default:
+          description: "unknown state : not managed by this server"
+          schema:
+            $ref: "#/definitions/Response"
+  /probe:
+    get:
+      summary: "Probe path used to monitor the process"
+      operationId: "getProbe"
+      produces:
+        - application/json
+      responses:
+        200:
+          description: "running probe"
+          schema:
+            $ref: "#/definitions/Response"
+definitions:
+  s3:
+    type: object
+    required:
+      - endpoint
+      - bucket
+      - accessKey
+      - secretKey
+      - backupName
+      - backupDir
+    properties:
+      region:
+        type: string
+        default: "us-east-1"
+        example: "us-east-1"
+      endpoint:
+        type: string
+        example: "https://s3.dev.orange:8443"
+      bucket:
+        type: string
+        example: "galera"
+      forcePathStyle:
+        type: boolean
+        default: true
+      accessKey:
+        type: string
+      secretKey:
+        type: string
+      backupName:
+        type: string
+      backupDir:
+        type: string
+  Response:
+    type: object
+    required:
+      - status
+      - message
+    properties:
+      status:
+        type: string
+      message:
+        type: string
+
+
+#securityDefinitions:
+    #  UserSecurity:
+  #type: basic
+    #security:
+#  - UserSecurity: []

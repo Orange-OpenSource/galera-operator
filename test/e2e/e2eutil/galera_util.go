@@ -147,13 +147,9 @@ func CheckData(kubeClient kubernetes.Interface, config *rest.Config, galera *api
 	expected := "article\tdealer\tprice\n1\tA\t3.45\n1\tB\t3.99\n2\tA\t10.99\n3\tB\t1.45\n3\tC\t1.69\n3\tD\t1.25\n4\tD\t19.95\n"
 
 	for _, pod := range podList.Items {
-
-		logrus.Infof("*************** pod : %s", pod.Name)
-
 		cmd := append(initCmd, "USE test; SELECT * FROM shop ORDER BY article")
 		stdout, _, err := exec.ExecCmd(kubeClient, config, pod.Namespace, &pod, cmd)
 		if err != nil {
-			logrus.Infof("***********  error: %v", err)
 			return false, err
 		}
 		if stdout != expected {
