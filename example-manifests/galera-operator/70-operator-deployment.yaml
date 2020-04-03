@@ -24,9 +24,9 @@ spec:
         - galera-operator
         # Uncomment to act for resources in all namespaces. More information in doc/clusterwide.md
         #- -cluster-wide
-        - resync=30
-        - run-thread=2
-        - backup-thread=2
+        - -resync=30
+        - -run-thread=2
+        - -backup-thread=2
         #- -version
         env:
         - name: MY_POD_NAMESPACE
