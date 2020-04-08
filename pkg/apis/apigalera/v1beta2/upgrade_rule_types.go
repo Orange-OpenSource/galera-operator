@@ -34,24 +34,6 @@ type UpgradeRule struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec UpgradeRuleSpec `json:"spec"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// UpgradeRuleList defines a List type for our custom UpgradeRule type.
-// This is needed in order to make List operations work.
-type UpgradeRuleList struct {
-	metav1.TypeMeta `json:",inline"`
-	// Standard list metadata
-	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
-	metav1.ListMeta `json:"metadata, omitempty"`
-
-	Items []UpgradeRule `json:"items"`
-}
-
-// UpgradeRuleSpec is the spec for a UpgradeRule resource
-type UpgradeRuleSpec struct {
 	// For deprecated options, operator must check if this option is used in galera conf. If it is the case,
 	// the upgrade process is stopped and an error is sent
 	// +optional
@@ -68,18 +50,33 @@ type UpgradeRuleSpec struct {
 	ReplacedOption *ReplacedOption `json:"replacedOption,omitempty"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// UpgradeRuleList defines a List type for our custom UpgradeRule type.
+// This is needed in order to make List operations work.
+type UpgradeRuleList struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard list metadata
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
+	metav1.ListMeta `json:"metadata, omitempty"`
+
+	Items []UpgradeRule `json:"items"`
+}
+
 // RemovedOption holds the RemovedOption configuration.
 type RemovedOption struct {
-	Regex       string `json:"regex"`
+	Option      string `json:"option"`
 }
 
 // ChangedDefaultOption holds the ChangedDefaultOption configuration.
 type ChangedDefaultOption struct {
-	Regex       string `json:"regex"`
+	Option      string `json:"option"`
+	Old			string `json:"oldDefault"`
+	New			string `json:"newDefault"`
 }
 
 // ReplacedOption holds the ReplacedOption configuration.
 type ReplacedOption struct {
-	Regex       string `json:"regex"`
+	Option      string `json:"option"`
 	Replacement string `json:"replacement"`
 }

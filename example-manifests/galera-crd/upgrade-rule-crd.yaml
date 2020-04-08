@@ -38,17 +38,31 @@ spec:
   validation:
     openAPIV3Schema:
     # https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md
-      required:
-      - spec
-      type: object
       properties:
-        spec:
+        removedOption:
           type: object
+          required:
+            - option
           properties:
-            upgradesRules:
-              type: object
-              required:
-              - targetVersion
-              properties:
-                targetVersion:
-                  type: string
+            option:
+              type: string
+        changedDefaultOption:
+          type: object
+          required:
+            - option
+          properties:
+            option:
+              type: string
+        replacedOption:
+          type: object
+          required:
+            - option
+            - replacement
+          properties:
+            option:
+              type: string
+            replacement:
+              type: string
+
+
+

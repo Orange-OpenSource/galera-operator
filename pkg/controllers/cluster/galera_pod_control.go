@@ -461,7 +461,7 @@ func (gpc *realGaleraPodControl) recordClaimEvent(verb string, galera *apigalera
 func (gpc *realGaleraPodControl) createPersistentVolumeClaim(galera *apigalera.Galera, pod *corev1.Pod) error {
 	claim := getPersistentVolumeClaim(galera, pod)
 	existingClaim, err := gpc.claimLister.PersistentVolumeClaims(claim.Namespace).Get(claim.Name)
-//	existingClaim, err := gpc.client.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(claim.Name, metav1.GetOptions{})
+//	existingClaim, err := gpc.galeraClient.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(claim.Name, metav1.GetOptions{})
 
 	// If the resource doesn't exist, we'll create it
 	if apierrors.IsNotFound(err) {

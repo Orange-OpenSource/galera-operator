@@ -35,7 +35,7 @@ type UpgradeConfig struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec UpgradeConfigSpec `json:"spec"`
+	UpgradeRules []RulesForVersion `json:"upgradeRules"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -49,12 +49,6 @@ type UpgradeConfigList struct {
 	metav1.ListMeta `json:"metadata, omitempty"`
 
 	Items []UpgradeConfig `json:"items"`
-}
-
-// UpgradeConfigSpec is the spec for a UpgradeConfig resource
-type UpgradeConfigSpec struct {
-	// Slice of all rules per version
-	upgradeRules []RulesForVersion `json:"upgradeRules"`
 }
 
 type RulesForVersion struct {

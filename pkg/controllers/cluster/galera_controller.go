@@ -75,7 +75,7 @@ type GaleraController struct {
 	galeraListerSynced cache.InformerSynced
 	// serviceListerSynced returns true if the service shared informer has synced at least once
 	serviceListerSynced cache.InformerSynced
-	// pdbListerSynced returns true if the poddisruptionbudget shared informer has synced at least once
+	// pdbListerSynced returns true if the podDisruptionBudget shared informer has synced at least once
 	pdbListerSynced cache.InformerSynced
 	// secretListerSynced returns true if the secret shared informer has synced at least once
 	secretListerSynced cache.InformerSynced
@@ -83,6 +83,10 @@ type GaleraController struct {
 	scListerSynced cache.InformerSynced
 	// upgradeConfigListerSynced returns true if the upgradeConfig shared informer has synced at least once
 	upgradeConfigListerSynced cache.InformerSynced
+	// upgradeRuleListerSyncec returns true if the upgradeRule shared informer has synced at least once
+	upgradeRuleListerSyncec cache.InformerSynced
+	// cmListerSynced returns true if configMap shared informer has synced at least once
+	cmListerSynced cache.InformerSynced
 	//claimLister is able to list/get persistent volume claims from a shared informer's store
 	claimLister corelisters.PersistentVolumeClaimLister
 	// claimListerSynced returns true if the claim shared informer has synced at least once
@@ -114,6 +118,8 @@ func NewGaleraController(
 	pdbInformer policyinformers.PodDisruptionBudgetInformer,
 	secretInformer coreinformers.SecretInformer,
 	upgradeConfigInformer informers.UpgradeConfigInformer,
+	upgradeRuleInformer informers.UpgradeRuleInformer,
+	cmInformer coreinformers.ConfigMapInformer,
 	bootstrapImage string,
 	backupImage string,
 	upgradeConfig string,
@@ -150,7 +156,13 @@ func NewGaleraController(
 			NewRealGaleraPodDisruptionBudgetControl(kubeClient, pdbInformer.Lister(), recorder),
 			NewRealGaleraSecretControl(secretInformer.Lister()),
 			NewRealGaleraStorageControl(scInformer.Lister()),
-			NewRealGaleraUpgradeConfigControl(galeraClient, upgradeConfigInformer.Lister(), upgradeConfig, namespace),
+			NewRealGaleraUpgradeConfigControl(
+				upgradeConfigInformer.Lister(),
+				upgradeRuleInformer.Lister(),
+				cmInformer.Lister(),
+				upgradeConfig,
+				namespace,
+				recorder),
 			NewRealGaleraRestoreControl(
 				kubeClient,
 				config,
@@ -172,6 +184,8 @@ func NewGaleraController(
 		secretListerSynced: secretInformer.Informer().HasSynced,
 		scListerSynced: scInformer.Informer().HasSynced,
 		upgradeConfigListerSynced: upgradeConfigInformer.Informer().HasSynced,
+		upgradeRuleListerSyncec: upgradeRuleInformer.Informer().HasSynced,
+		cmListerSynced: cmInformer.Informer().HasSynced,
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Galera"),
 	}
 
@@ -254,6 +268,8 @@ func (gc *GaleraController) Run(threadiness int, stopCh <-chan struct{}){
 		gc.secretListerSynced,
 		gc.scListerSynced,
 		gc.upgradeConfigListerSynced,
+		gc.upgradeRuleListerSyncec,
+		gc.cmListerSynced,
 	) {
 		return
 	}

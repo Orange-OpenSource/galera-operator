@@ -51,7 +51,7 @@ clean:
 clonegen:
 	git clone -b $(CODE_GEN) https://github.com/kubernetes/code-generator ./vendor/k8s.io/code-generator
 
-codegen: clean
+codegen:
 	./hack/update-codegen.sh
 	rm ./pkg/client/listers/apigalera/$(API_VERSION)/expansion_generated.go
 

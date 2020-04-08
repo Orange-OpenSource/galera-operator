@@ -357,10 +357,20 @@ func (gc *defaultGaleraControl) syncGalera(
 		return &status, fmt.Errorf(fmt.Sprintf("cluter %s/%s is failed, credentials are incorrect", currentGalera.Namespace, currentGalera.Name))
 	}
 
-	upgrading := gc.upgradeConfigControl.CanUpgrade(currentGalera.Spec.Pod.Image, nextGalera.Spec.Pod.Image)
-
-	// copy previous Conditions
+	// Copy previous Conditions
 	status.Conditions = currentGalera.Status.Conditions
+
+	if !status.IsUpgrading() {
+		// Check if we can upgrade, if not, use only the current galera
+		canUpgrade, err := gc.upgradeConfigControl.CanUpgrade(currentGalera.Spec.Pod.Image, nextGalera.Spec.Pod.Image, nextGalera.Spec.Pod.MycnfConfigMap, currentGalera)
+		if err != nil {
+			return &status, err
+		}
+		if !canUpgrade {
+			// If we can not upgrade, keep using the current controller revision
+			nextGalera = currentGalera
+		}
+	}
 
 	switch currentGalera.Status.Phase {
 	case apigalera.GaleraPhaseNone:
@@ -440,7 +450,6 @@ func (gc *defaultGaleraControl) syncGalera(
 			currentRevision,
 			nextRevision,
 			&status,
-			upgrading,
 			pods,
 			claims,
 			mapCredGalera)
@@ -476,7 +485,6 @@ func (gc *defaultGaleraControl) runGalera(
 	currentRevision string,
 	nextRevision string,
 	status *apigalera.GaleraStatus,
-	upgrading bool,
 	pods []*corev1.Pod,
 	claims []*corev1.PersistentVolumeClaim,
 	mapCredGalera map[string]string) error {

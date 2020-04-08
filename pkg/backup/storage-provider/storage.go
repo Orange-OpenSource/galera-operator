@@ -29,7 +29,7 @@ type Interface interface {
 	Retrieve(key, restoreDir string) error
 }
 
-// NewStorageProvideS3r accepts a secret map and uses its contents to determine the
+// NewStorageProviderS3 accepts a secret map and uses its contents to determine the
 // desired object storage provider implementation.
 func NewStorageProviderS3(config apigalera.StorageProvider, credentials map[string]string, backupPod *corev1.Pod) (Interface, error) {
 	return s3.NewProvider(config.S3, credentials, backupPod)

@@ -149,6 +149,8 @@ func main() {
 		kubeInformerFactory.Policy().V1beta1().PodDisruptionBudgets(),
 		kubeInformerFactory.Core().V1().Secrets(),
 		galeraOperatorInformerFactory.Sql().V1beta2().UpgradeConfigs(),
+		galeraOperatorInformerFactory.Sql().V1beta2().UpgradeRules(),
+		kubeInformerFactory.Core().V1().ConfigMaps(),
 		bootstrapImage,
 		backupImage,
 		upgradeConfig,

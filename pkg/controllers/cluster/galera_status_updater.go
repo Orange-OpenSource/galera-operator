@@ -32,7 +32,7 @@ type GaleraStatusUpdaterInterface interface {
 }
 
 // NewRealGaleraStatusUpdater returns a GaleraStatusUpdaterInterface that updates the Status of a Galera,
-// using the supplied client and galeraLister.
+// using the supplied galeraClient and galeraLister.
 func NewRealGaleraStatusUpdater(
 	client galeraclientset.Interface,
 	galeraLister listers.GaleraLister) GaleraStatusUpdaterInterface {

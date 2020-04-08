@@ -39,19 +39,16 @@ spec:
     openAPIV3Schema:
       # https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md
       required:
-      - spec
-      type: object
+        - upgradeRules
       properties:
-        spec:
+        upgradesRules:
           type: object
           required:
-          - upgradeRules
+            - targetVersion
           properties:
-            upgradesRules:
-              type: object
-              required:
-              - targetVersion
-              properties:
-                targetVersion:
-                  type: string
+            targetVersion:
+              type: string
+            rules:
+              type: string
+
 
