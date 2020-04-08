@@ -30,8 +30,6 @@ Note: Operator image provided for example purpose are build for Kubernetes 1.15+
 
 ## Features
 
-![galera operation design overview](https://raw.githubusercontent.com/Orange-OpenSource/galera-operator/master/doc/images/overview.png)
-
 ### Deploy Galera Operator
 
 First, we need to deploy new kind of resources used to describe galera cluster and galera backup, note upgrade-config and upgrade-rule is a forthcoming feature used to validate if a cluster can be upgraded:
