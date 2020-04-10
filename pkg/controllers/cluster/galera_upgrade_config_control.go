@@ -67,12 +67,6 @@ func (gucc *realGaleraUpgradeConfigControl) CanUpgrade(
 	config *corev1.LocalObjectReference,
 	galera *apigalera.Galera) (bool, error) {
 
-	// debug
-	nextImage = "sebs42/mariadb:10.5.1-bionic"
-
-	logrus.Infof("SEB: current : %s", currentImage)
-	logrus.Infof("SEB: next : %s", nextImage)
-
 	if currentImage == nextImage {
 		return true, nil
 	}
@@ -86,7 +80,7 @@ func (gucc *realGaleraUpgradeConfigControl) CanUpgrade(
 		return true, nil
 	}
 
-	err := gucc.canUpgrade(currentImage, nextImage, config)
+	err := gucc.canUpgrade(currentImage, nextImage, config, galera)
 
 	gucc.recordUpgradeEvent(galera, err)
 
@@ -99,7 +93,8 @@ func (gucc *realGaleraUpgradeConfigControl) CanUpgrade(
 
 func (gucc *realGaleraUpgradeConfigControl) canUpgrade(
 	currentImage, nextImage string,
-	config *corev1.LocalObjectReference) error {
+	config *corev1.LocalObjectReference,
+	galera *apigalera.Galera) error {
 
 	upgradeConfig, err := gucc.upgradeConfigLister.UpgradeConfigs(gucc.namespace).Get(gucc.upgradeConfigName)
 	if err != nil {
@@ -111,14 +106,15 @@ func (gucc *realGaleraUpgradeConfigControl) canUpgrade(
 		return fmt.Errorf("unable to retrieve configMap %s/%s : %v", gucc.namespace, config.Name, err)
 	}
 
-	return gucc.validateConfig(upgradeConfig, configMap, nextImage)
+	return gucc.validateConfig(upgradeConfig, configMap, nextImage, galera)
 }
 
-func (gucc *realGaleraUpgradeConfigControl) validateConfig(upgradeConfig *apigalera.UpgradeConfig, configMap *corev1.ConfigMap, version string) error {
+func (gucc *realGaleraUpgradeConfigControl) validateConfig(
+	upgradeConfig *apigalera.UpgradeConfig,
+	configMap *corev1.ConfigMap,
+	version string,
+	galera *apigalera.Galera) error {
 
-	logrus.Infof("SEB: validateConfig")
-
-//	logrus.Infof("upgConfig := %+v", upgradeConfig)
 	mycnf, exist := configMap.Data["my.cnf"]
 	if !exist {
 		return fmt.Errorf("unable to retrieve my.cnf from configMap %s/%s", configMap.Namespace, configMap.Name)
@@ -126,20 +122,20 @@ func (gucc *realGaleraUpgradeConfigControl) validateConfig(upgradeConfig *apigal
 
 	cnf := []byte(mycnf)
 
-//	logrus.Infof("exist : %t mycnf : %s ", exist, mycnf)
-
 	upgRules := upgradeConfig.UpgradeRules
 
 	major, minor, patch := getImageVersion(version)
 
 	for _, versionRules := range upgRules {
 		semver := semverRegex.Split(versionRules.TargetVersion, 3)
-		logrus.Infof("semver : %+v",semver)
 
 		switch len(semver) {
 		case 1:
 			if major == semver[0] {
 				if err := gucc.checkRemovedRules(versionRules.Rules, cnf); err != nil {
+					return err
+				}
+				if err := gucc.checkChangedDefaultOptionRules(versionRules.Rules, cnf, galera); err != nil {
 					return err
 				}
 			}
@@ -148,10 +144,16 @@ func (gucc *realGaleraUpgradeConfigControl) validateConfig(upgradeConfig *apigal
 				if err := gucc.checkRemovedRules(versionRules.Rules, cnf); err != nil {
 					return err
 				}
+				if err := gucc.checkChangedDefaultOptionRules(versionRules.Rules, cnf, galera); err != nil {
+					return err
+				}
 			}
 		case 3:
 			if major == semver[0] && minor == semver[1] && patch == semver[2] {
 				if err := gucc.checkRemovedRules(versionRules.Rules, cnf); err != nil {
+					return err
+				}
+				if err := gucc.checkChangedDefaultOptionRules(versionRules.Rules, cnf, galera); err != nil {
 					return err
 				}
 			}
@@ -163,22 +165,19 @@ func (gucc *realGaleraUpgradeConfigControl) validateConfig(upgradeConfig *apigal
 	return nil
 }
 
-
+// checkRomvedRules checks if the my.cnf config file use a parameter not supported anymore.
+// In such case it returns an error.
+// It also returns an error if a ConfigRule can not be read
 func (gucc *realGaleraUpgradeConfigControl) checkRemovedRules(rules []corev1.LocalObjectReference, cnf []byte) error {
 	for _, rule := range rules {
-
-		logrus.Infof("check rule: %+v rule.Name %s", rule, rule.Name)
-
 		upgRule, err := gucc.upgradeRuleLister.UpgradeRules(gucc.namespace).Get(rule.Name)
 		if err != nil {
 			return fmt.Errorf("unable to retrieve operator upgrade rule %s/%s : %v", gucc.namespace, rule.Name, err)
 		}
 
 		if upgRule.RemovedOption != nil {
-			logrus.Infof("****** removed option : %s", upgRule.RemovedOption.Option)
 			rmRegex := regexp.MustCompile("(?im)^" + upgRule.RemovedOption.Option + "(.*)$")
 			if rmRegex.Find(cnf) != nil {
-				logrus.Infof("removed option found : %s", upgRule.RemovedOption.Option)
 				return fmt.Errorf("removed option found : %s", upgRule.RemovedOption.Option)
 			}
 		}
@@ -186,6 +185,31 @@ func (gucc *realGaleraUpgradeConfigControl) checkRemovedRules(rules []corev1.Loc
 
 	return nil
 }
+
+// checkChangedDefaultOptionRules checks if the my.cnf config file do not use a parameter where the default
+// value changed
+func (gucc *realGaleraUpgradeConfigControl) checkChangedDefaultOptionRules(
+	rules []corev1.LocalObjectReference,
+	cnf []byte,
+	galera *apigalera.Galera) error {
+	for _, rule := range rules {
+		upgRule, err := gucc.upgradeRuleLister.UpgradeRules(gucc.namespace).Get(rule.Name)
+		if err != nil {
+			return fmt.Errorf("unable to retrieve operator upgrade rule %s/%s : %v", gucc.namespace, rule.Name, err)
+		}
+
+		if upgRule.ChangedDefaultOption != nil {
+			rmRegex := regexp.MustCompile("(?im)^" + upgRule.ChangedDefaultOption.Option + "(.*)$")
+			if rmRegex.Find(cnf) == nil {
+				msg := fmt.Sprintf("%s not found in my.cnf, default value changed from %s to %s", upgRule.ChangedDefaultOption.Option, upgRule.ChangedDefaultOption.Old, upgRule.ChangedDefaultOption.New)
+				gucc.recordChangedDefaultOptionValueEvent(galera, msg)
+			}
+		}
+	}
+
+	return nil
+}
+
 
 // recordUpgradeEvent records an event about upgrade validation. If err is nil the generated event will
 // have a reason of v1.EventTypeNormal. If err is not nil the generated event will have a reason of v1.EventTypeWarning.
@@ -199,6 +223,11 @@ func (gucc *realGaleraUpgradeConfigControl) recordUpgradeEvent(galera *apigalera
 		message := fmt.Sprintf("Validate my.cnf for Galera %s/%s failed error: %s", galera.Namespace, galera.Name, err)
 		gucc.recorder.Event(galera, corev1.EventTypeWarning, reason, message)
 	}
+}
+
+// recordChangedDefaultOptionValueEvent records an event about a an option where the default value changed.
+func (gucc *realGaleraUpgradeConfigControl) recordChangedDefaultOptionValueEvent (galera *apigalera.Galera, msg string) {
+	gucc.recorder.Event(galera, corev1.EventTypeWarning, "Checked", msg)
 }
 
 // isImageGreate compare semver names and returns true if the next image is greate thant the current one

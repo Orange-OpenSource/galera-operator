@@ -18,7 +18,7 @@ spec:
       serviceAccountName: galera-operator
       containers:
       - name: galera-operator
-        image: sebs42/galera-operator:0.4.0
+        image: sebs42/galera-operator:0.4
         imagePullPolicy: Always
         command:
         - galera-operator
