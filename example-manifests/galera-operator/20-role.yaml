@@ -19,7 +19,9 @@ rules:
       - sql.databases
     resources:
       - galeras/status
+      - galeras/finalizers
       - galerabackups/status
+      - galerabackups/finalizers
     verbs:
       - "*"
   - apiGroups:
