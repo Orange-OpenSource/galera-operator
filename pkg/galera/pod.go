@@ -131,7 +131,7 @@ func bootstrapContainer(bootstrapImage, user, password, clusterName, name, addre
 }
 
 func galeraContainer(image, user, password , role string) corev1.Container {
-	argContainer := []string{fmt.Sprintf("--defaults-file=%s/my.cnf", apigalera.BootstrapVolumeMountPath), "--user=mysql"}
+	argContainer := []string{fmt.Sprintf("--defaults-file=%s/my.cnf", apigalera.BootstrapVolumeMountPath)}
 
 	mounts := []corev1.VolumeMount{bootstrapVolumeMount(), galeraVolumeMount(role)}
 
