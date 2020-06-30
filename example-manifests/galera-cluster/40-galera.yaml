@@ -41,7 +41,7 @@ spec:
             key: exporter-password
 #        value: "etest"
     metric:
-      image: prom/mysqld-exporter:v0.11.0
+      image: prom/mysqld-exporter:v0.12.1
       env:
         - name: DATA_SOURCE_NAME
 #          value: exporter:${EXPORTER_PASSWORD}@(localhost:3306)
