@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ./galera-crd/galera-crd.yaml
+- ./galera-operator/00-namespace.yaml
+- ./galera-operator/10-operator-sa.yaml
+- ./galera-operator/20-role.yaml
+- ./galera-operator/30-role-binding.yaml
+- ./galera-operator/40-cluster-role.yaml
+# - ./galera-operator/50-cluster-role-clusterwide.yaml # Read Documentation if needed
+- ./galera-operator/60-cluster-role-binding.yaml 
+- ./galera-operator/70-operator-deployment.yaml
