@@ -3,9 +3,7 @@ kind: Kustomization
 metadata:
   labels:
     app.kubernetes.io/name: galera-operator
-    app.kubernetes.io/version: "0.1.1"
     app.kubernetes.io/component: operator
-    app.kubernetes.io/managed-by: kapp-or-skaffold
 resources:
 - ./galera-crd/galera-crd.yaml
 - ./galera-operator/00-namespace.yaml
