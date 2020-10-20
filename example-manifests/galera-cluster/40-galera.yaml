@@ -6,7 +6,7 @@ metadata:
   ## Adding this annotation make this cluster managed by clusterwide operators
   ## namespaced operators ignore it
   #annotations:
-  #  sql.databases/scope: clusterwide
+  #  galera.v1beta2sql.databases/scope: clusterwide
   labels:
     stage: dev
     owner: sebs42
